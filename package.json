@@ -1,0 +1,8 @@
+{
+  "name": "pegasus",
+  "private": true,
+  "packageManager": "pnpm@10",
+  "scripts": {
+    "dev": "echo Pegasus"
+  }
+}
