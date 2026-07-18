@@ -8,6 +8,7 @@ from app.api.v1.people import router as people_router
 from app.api.v1.races import router as race_router
 from app.api.v1.tracks import router as track_router
 from app.api.v1.tjk import router as tjk_router
+from app.api.v1.tjk_discovery import router as tjk_discovery_router
 from app.api.v1.tjk_csv import router as tjk_csv_router
 
 app = FastAPI(
@@ -30,6 +31,7 @@ app.include_router(track_router, prefix="/api/v1")
 app.include_router(people_router, prefix="/api/v1")
 app.include_router(crawler_router, prefix="/api/v1")
 app.include_router(tjk_router, prefix="/api/v1")
+app.include_router(tjk_discovery_router, prefix="/api/v1")
 app.include_router(tjk_csv_router, prefix="/api/v1")
 
 
@@ -46,6 +48,7 @@ def health():
     return {
         "status": "healthy"
     }
+
 
 
 
