@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 
 from app.api.v1.horses import router as horse_router
+from app.api.v1.intelligence import router as intelligence_router
 from app.api.v1.crawler import router as crawler_router
 from app.api.v1.people import router as people_router
 from app.api.v1.races import router as race_router
@@ -13,6 +14,7 @@ app = FastAPI(
 )
 
 app.include_router(horse_router, prefix="/api/v1")
+app.include_router(intelligence_router, prefix="/api/v1")
 app.include_router(race_router, prefix="/api/v1")
 app.include_router(track_router, prefix="/api/v1")
 app.include_router(people_router, prefix="/api/v1")
@@ -33,3 +35,4 @@ def health():
     return {
         "status": "healthy"
     }
+
