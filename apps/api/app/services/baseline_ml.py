@@ -205,13 +205,29 @@ def train(db: Session) -> dict:
     benchmarks = {"agf_favorite": _favorite_metrics(test_frame, "agf_percent"), "handicap_leader": _favorite_metrics(test_frame, "handicap_rating"), "lowest_weight": _favorite_metrics(test_frame, "weight_kg", ascending=True)}
     challenger_top1 = metrics.get("top1_accuracy") or 0.0
     benchmark_top1 = benchmarks["handicap_leader"].get("top1_accuracy") or 0.0
-    selected = MODEL_VERSION if challenger_top1 >= benchmark_top1 else "handicap-leader-v1"
+    evaluated_races = metrics.get("evaluated_races") or 0
+    minimum_margin = 0.02
+    minimum_test_races = 50
+    margin = challenger_top1 - benchmark_top1
+    challenger_eligible = evaluated_races >= minimum_test_races and margin >= minimum_margin
+    selected = MODEL_VERSION if challenger_eligible else "handicap-leader-v1"
+    if evaluated_races < minimum_test_races:
+        reason = "Probability model is held back until the temporal test contains enough settled races."
+    elif margin < minimum_margin:
+        reason = "Probability model did not clear the conservative temporal improvement margin over the transparent handicap benchmark."
+    else:
+        reason = "Probability model cleared the conservative temporal improvement margin over the transparent handicap benchmark."
     deployment = {
-        "policy": "champion_challenger_v1",
+        "policy": "champion_challenger_v2",
         "selected_model": selected,
+        "candidate_model": MODEL_VERSION,
         "challenger_top1_accuracy": challenger_top1,
         "handicap_benchmark_top1_accuracy": benchmark_top1,
-        "reason": "Probability model outperformed the transparent handicap benchmark." if selected == MODEL_VERSION else "Transparent handicap benchmark outperformed the probability model on the temporal holdout.",
+        "top1_margin": margin,
+        "minimum_required_margin": minimum_margin,
+        "evaluated_races": evaluated_races,
+        "minimum_required_races": minimum_test_races,
+        "reason": reason,
     }
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     metadata = {"model_version": MODEL_VERSION, "trained_at": datetime.now(timezone.utc).isoformat(), "settled_races": settled_races, "training_entries": int(len(train_frame)), "test_entries": int(len(test_frame)), "feature_names": FEATURES, "metrics": metrics, "benchmarks": benchmarks, "deployment": deployment, "note": "Temporal horse-form model. Probabilities are decision support, not guarantees."}
