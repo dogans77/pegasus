@@ -5,7 +5,7 @@ type Health = { trained:boolean; deployed_model?:string; candidate_top1_accuracy
 type FeaturedExplanation = { candidates:{entry_id:number; program_number:number; strengths:{label:string;detail:string}[]}[] };
 const api='http://127.0.0.1:8042/api/v1';
 async function getJson<T>(path:string, fallback:T):Promise<T>{try{const r=await fetch(`${api}${path}`,{cache:'no-store'});return r.ok?await r.json() as T:fallback}catch{return fallback}}
-const clean=(value:string|null|undefined)=>{const source=value??'';try{const escaped=source.replace(/\\u([0-9a-f]{4})/gi,(_,code)=>String.fromCharCode(parseInt(code,16)));return /(?:ÃƒÆ’|Ãƒâ€š)/.test(escaped)?decodeURIComponent(escape(escaped)):escaped}catch{return source}};
+const clean=(value:string|null|undefined)=>{let text=(value??"").replace(/\\u([0-9a-f]{4})/gi,(_,code)=>String.fromCharCode(parseInt(code,16)));for(let index=0;index<4;index+=1){if(!/[\u00c3\u00c2\u00e2]/.test(text))break;try{text=decodeURIComponent(escape(text))}catch{break}}return text;};
 const key=(entry:Entry,index:number)=>`${entry.entry_id??entry.id??entry.program_number}-${index}`;
 export const dynamic='force-dynamic';
 export default async function Home(){
