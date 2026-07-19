@@ -19,7 +19,7 @@ from app.models.race import Race
 from app.models.race_entry import RaceEntry
 from app.models.race_result import RaceResult
 
-MODEL_VERSION = "finish-form-logistic-v4"
+MODEL_VERSION = "field-relative-logistic-v5"
 NUMERIC_FEATURES = [
     "handicap_rating", "weight_kg", "agf_percent", "barrier", "distance_meters", "field_size",
     "days_since_last_start", "prior_starts", "prior_wins", "prior_win_rate", "last_start_won",
@@ -30,12 +30,14 @@ NUMERIC_FEATURES = [
     "jockey_trainer_prior_starts", "jockey_trainer_prior_win_rate",
     "last_finish_position", "recent_finish_average", "recent_top3_rate",
     "same_surface_finish_average", "same_distance_finish_average",
+    "handicap_vs_field_mean", "weight_advantage_vs_field", "agf_share", "agf_rank",
+    "barrier_relative", "prior_win_rate_vs_field", "recent_finish_advantage_vs_field",
 ]
 CATEGORICAL_FEATURES = ["surface", "race_class"]
 FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 ARTIFACT_DIR = Path(__file__).resolve().parent.parent / "ml" / "artifacts"
-MODEL_PATH = ARTIFACT_DIR / "finish_form_logistic_v4.joblib"
-METADATA_PATH = ARTIFACT_DIR / "finish_form_logistic_v4.json"
+MODEL_PATH = ARTIFACT_DIR / "field_relative_logistic_v5.joblib"
+METADATA_PATH = ARTIFACT_DIR / "field_relative_logistic_v5.json"
 
 
 def _empty_state() -> dict:
@@ -99,6 +101,40 @@ def _entry_row(entry: RaceEntry, race: Race, field_size: int, state: dict | None
     return row
 
 
+def _mean(rows: list[dict], key: str) -> float | None:
+    values = [float(row[key]) for row in rows if row.get(key) is not None]
+    return sum(values) / len(values) if values else None
+
+
+def _add_field_relative_features(rows: list[dict]) -> list[dict]:
+    """Add race-card-relative signals known before the race begins."""
+    if not rows:
+        return rows
+    handicap_mean = _mean(rows, "handicap_rating")
+    weight_mean = _mean(rows, "weight_kg")
+    win_rate_mean = _mean(rows, "prior_win_rate")
+    finish_mean = _mean(rows, "recent_finish_average")
+    agf_total = sum(float(row["agf_percent"]) for row in rows if row.get("agf_percent") is not None)
+    ordered_agf = sorted(
+        [row for row in rows if row.get("agf_percent") is not None],
+        key=lambda row: (-float(row["agf_percent"]), int(row["program_number"])),
+    )
+    for rank, row in enumerate(ordered_agf, start=1):
+        row["agf_rank"] = rank
+    for row in rows:
+        handicap = row.get("handicap_rating")
+        weight = row.get("weight_kg")
+        agf = row.get("agf_percent")
+        win_rate = row.get("prior_win_rate")
+        finish_average = row.get("recent_finish_average")
+        row["handicap_vs_field_mean"] = float(handicap) - handicap_mean if handicap is not None and handicap_mean is not None else None
+        row["weight_advantage_vs_field"] = weight_mean - float(weight) if weight is not None and weight_mean is not None else None
+        row["agf_share"] = float(agf) / agf_total if agf is not None and agf_total > 0 else None
+        row["barrier_relative"] = float(row["barrier"]) / max(float(row.get("field_size") or 1), 1.0) if row.get("barrier") is not None else None
+        row["prior_win_rate_vs_field"] = float(win_rate) - win_rate_mean if win_rate is not None and win_rate_mean is not None else None
+        row["recent_finish_advantage_vs_field"] = finish_mean - float(finish_average) if finish_average is not None and finish_mean is not None else None
+    return rows
+
 def _settled_groups(db: Session, before_date=None) -> list[tuple[Race, RaceResult, list[RaceEntry]]]:
     statement = (
         select(Race, RaceResult, RaceEntry)
@@ -152,11 +188,13 @@ def training_frame(db: Session) -> pd.DataFrame:
     for race, result, entries in _settled_groups(db):
         if result.winner_entry_id is None or len(entries) < 2:
             continue
+        race_rows = []
         for entry in entries:
             pair_key = (entry.jockey_id, entry.trainer_id)
             record = _entry_row(entry, race, len(entries), horses[entry.horse_id], jockeys[entry.jockey_id], trainers[entry.trainer_id], pairs[pair_key])
             record["winner"] = int(entry.id == result.winner_entry_id)
-            records.append(record)
+            race_rows.append(record)
+        records.extend(_add_field_relative_features(race_rows))
         _apply_race_to_history(race, result, entries, horses, jockeys, trainers, pairs)
     return pd.DataFrame(records)
 
@@ -254,7 +292,7 @@ def predict_race(db: Session, race_id: int) -> dict:
     horses, jockeys, trainers, pairs = (defaultdict(_empty_state) for _ in range(4))
     for prior_race, result, prior_entries in _settled_groups(db, before_date=race.race_date):
         _apply_race_to_history(prior_race, result, prior_entries, horses, jockeys, trainers, pairs)
-    rows = [_entry_row(entry, race, len(entries), horses[entry.horse_id], jockeys[entry.jockey_id], trainers[entry.trainer_id], pairs[(entry.jockey_id, entry.trainer_id)]) for entry in entries]
+    rows = _add_field_relative_features([_entry_row(entry, race, len(entries), horses[entry.horse_id], jockeys[entry.jockey_id], trainers[entry.trainer_id], pairs[(entry.jockey_id, entry.trainer_id)]) for entry in entries])
     artifact = joblib.load(MODEL_PATH)
     deployment = artifact["metadata"].get("deployment", {"selected_model": MODEL_VERSION})
     selected_model = deployment.get("selected_model", MODEL_VERSION)
