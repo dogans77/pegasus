@@ -12,3 +12,14 @@ h2 { margin:0; font-size:1.45rem; }.sub { max-width:680px; color:var(--muted); l
 .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:14px; }.metrics article,.panel { background:rgba(16,28,45,.86); border:1px solid var(--line); border-radius:16px; }.metrics article { padding:19px; }.metrics span,.metrics small { display:block; color:var(--muted); font-size:.82rem; }.metrics strong { display:block; font-size:1.8rem; margin:8px 0; }
 .panel-grid { display:grid; grid-template-columns:1.5fr 1fr; gap:14px; }.panel { padding:25px; }.panel-head { display:flex; justify-content:space-between; align-items:start; }.panel-head>span { color:var(--muted); font-size:.82rem; }.race-list { margin-top:18px; }.race { display:grid; grid-template-columns:100px 1fr auto; padding:14px 0; border-top:1px solid var(--line); gap:15px; align-items:center; }.race span,.race em { color:var(--muted); font-size:.9rem; }.race em { font-style:normal; text-transform:capitalize; }.empty { margin-top:20px; padding:24px; border:1px dashed var(--line); color:var(--muted); border-radius:10px; }.score { margin:24px 0; padding:22px; background:#0b1624; border-radius:12px; }.score span,.score small { color:var(--muted); display:block; }.score strong { display:block; color:var(--accent); font-size:3.3rem; margin:5px 0; }.intelligence ul { padding-left:20px; color:var(--muted); line-height:2; }
 @media(max-width:760px){main{padding:38px 18px}.hero,.panel-grid{display:block}.connection{margin-top:20px}.metrics{grid-template-columns:repeat(2,1fr)}.panel{margin-top:14px}.race{grid-template-columns:1fr}.race em{display:none}}
+
+.entry-list { margin-top: 18px; }
+.entry { border-top: 1px solid var(--line); padding: 12px 0; display: grid; gap: 4px; }
+.entry b { font-size: .95rem; }
+.entry span, .entry small { color: var(--muted); font-size: .82rem; }
+.daily-strip { margin: 14px 0; padding: 22px; background: rgba(16,28,45,.86); border: 1px solid var(--line); border-radius: 16px; }
+.daily-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.daily-pick { padding: 14px; background: #0b1624; border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 6px; }
+.daily-pick small, .daily-pick span, .daily-pick em { color: var(--muted); font-size: .78rem; font-style: normal; }
+.daily-pick b { font-size: .95rem; }
+@media(max-width:760px){.daily-grid{grid-template-columns:1fr}}

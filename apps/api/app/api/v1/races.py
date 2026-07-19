@@ -35,7 +35,35 @@ def create_race(payload: RaceCreate, db: Session = Depends(get_db)) -> RaceRespo
 def get_race_entries(race_id: int, db: Session = Depends(get_db)) -> list[RaceEntryResponse]:
     if not db.get(Race, race_id):
         raise HTTPException(status_code=404, detail="Race not found")
-    return list(db.scalars(select(RaceEntry).where(RaceEntry.race_id == race_id).order_by(RaceEntry.program_number)))
+    statement = (
+        select(RaceEntry)
+        .options(
+            selectinload(RaceEntry.horse),
+            selectinload(RaceEntry.jockey),
+            selectinload(RaceEntry.trainer),
+        )
+        .where(RaceEntry.race_id == race_id)
+        .order_by(RaceEntry.program_number)
+    )
+    entries = list(db.scalars(statement))
+    return [
+        {
+            "id": entry.id,
+            "race_id": entry.race_id,
+            "horse_id": entry.horse_id,
+            "jockey_id": entry.jockey_id,
+            "trainer_id": entry.trainer_id,
+            "program_number": entry.program_number,
+            "barrier": entry.barrier,
+            "weight_kg": entry.weight_kg,
+            "handicap_rating": entry.handicap_rating,
+            "agf_percent": entry.agf_percent,
+            "horse_name": entry.horse.name if entry.horse else None,
+            "jockey_name": entry.jockey.name if entry.jockey else None,
+            "trainer_name": entry.trainer.name if entry.trainer else None,
+        }
+        for entry in entries
+    ]
 
 
 @router.post("/{race_id}/entries", response_model=RaceEntryResponse, status_code=status.HTTP_201_CREATED)

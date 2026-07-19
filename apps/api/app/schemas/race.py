@@ -35,3 +35,6 @@ class RaceEntryCreate(ORMModel):
 class RaceEntryResponse(RaceEntryCreate):
     id: int
     race_id: int
+    horse_name: str | None = None
+    jockey_name: str | None = None
+    trainer_name: str | None = None

@@ -9,3 +9,7 @@ from app.models.trainer import Trainer
 __all__ = ["CrawlerRun", "Horse", "Jockey", "Race", "RaceEntry", "Track", "Trainer"]
 
 from app.models.source_document import SourceDocument
+
+from app.models.prediction_snapshot import PredictionSnapshot
+
+from app.models.race_result import RaceResult
