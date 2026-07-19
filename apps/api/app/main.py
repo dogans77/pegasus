@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.ml import router as baseline_ml_router
 from app.api.v1.horses import router as horse_router
+from app.api.v1.horse_profiles import router as horse_profiles_router
 from app.api.v1.intelligence import router as intelligence_router
 from app.api.v1.explanations import router as explanations_router
 from app.api.v1.crawler import router as crawler_router
@@ -35,6 +36,7 @@ app.add_middleware(
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(baseline_ml_router, prefix="/api/v1")
 app.include_router(horse_router, prefix="/api/v1")
+app.include_router(horse_profiles_router, prefix="/api/v1")
 app.include_router(intelligence_router, prefix="/api/v1")
 app.include_router(explanations_router, prefix="/api/v1")
 app.include_router(race_router, prefix="/api/v1")
