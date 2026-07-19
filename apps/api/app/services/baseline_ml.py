@@ -19,7 +19,7 @@ from app.models.race import Race
 from app.models.race_entry import RaceEntry
 from app.models.race_result import RaceResult
 
-MODEL_VERSION = "participant-logistic-v3"
+MODEL_VERSION = "finish-form-logistic-v4"
 NUMERIC_FEATURES = [
     "handicap_rating", "weight_kg", "agf_percent", "barrier", "distance_meters", "field_size",
     "days_since_last_start", "prior_starts", "prior_wins", "prior_win_rate", "last_start_won",
@@ -28,16 +28,18 @@ NUMERIC_FEATURES = [
     "jockey_prior_starts", "jockey_prior_win_rate",
     "trainer_prior_starts", "trainer_prior_win_rate",
     "jockey_trainer_prior_starts", "jockey_trainer_prior_win_rate",
+    "last_finish_position", "recent_finish_average", "recent_top3_rate",
+    "same_surface_finish_average", "same_distance_finish_average",
 ]
 CATEGORICAL_FEATURES = ["surface", "race_class"]
 FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 ARTIFACT_DIR = Path(__file__).resolve().parent.parent / "ml" / "artifacts"
-MODEL_PATH = ARTIFACT_DIR / "participant_logistic_v3.joblib"
-METADATA_PATH = ARTIFACT_DIR / "participant_logistic_v3.json"
+MODEL_PATH = ARTIFACT_DIR / "finish_form_logistic_v4.joblib"
+METADATA_PATH = ARTIFACT_DIR / "finish_form_logistic_v4.json"
 
 
 def _empty_state() -> dict:
-    return {"starts": 0, "wins": 0, "last_date": None, "last_won": None, "surface": defaultdict(lambda: [0, 0]), "distance": defaultdict(lambda: [0, 0]), "track": defaultdict(lambda: [0, 0])}
+    return {"starts": 0, "wins": 0, "last_date": None, "last_won": None, "recent_finishes": [], "surface": defaultdict(lambda: [0, 0]), "distance": defaultdict(lambda: [0, 0]), "track": defaultdict(lambda: [0, 0]), "surface_finish": defaultdict(lambda: [0, 0]), "distance_finish": defaultdict(lambda: [0, 0])}
 
 
 def _rate(bucket) -> float | None:
@@ -70,6 +72,11 @@ def _history_features(entry: RaceEntry, race: Race, state: dict, jockey_state: d
         "trainer_prior_win_rate": round(trainer_state["wins"] / trainer_state["starts"], 5) if trainer_state["starts"] else None,
         "jockey_trainer_prior_starts": pair_state["starts"],
         "jockey_trainer_prior_win_rate": round(pair_state["wins"] / pair_state["starts"], 5) if pair_state["starts"] else None,
+        "last_finish_position": state["recent_finishes"][-1] if state["recent_finishes"] else None,
+        "recent_finish_average": round(sum(state["recent_finishes"][-3:]) / len(state["recent_finishes"][-3:]), 4) if state["recent_finishes"] else None,
+        "recent_top3_rate": round(sum(1 for value in state["recent_finishes"][-3:] if value <= 3) / len(state["recent_finishes"][-3:]), 4) if state["recent_finishes"] else None,
+        "same_surface_finish_average": round(state["surface_finish"][surface][1] / state["surface_finish"][surface][0], 4) if state["surface_finish"][surface][0] else None,
+        "same_distance_finish_average": round(state["distance_finish"][distance][1] / state["distance_finish"][distance][0], 4) if state["distance_finish"][distance][0] else None,
     }
 
 
@@ -109,7 +116,7 @@ def _settled_groups(db: Session, before_date=None) -> list[tuple[Race, RaceResul
     return list(grouped.values())
 
 
-def _record_outcome(state: dict, race: Race, won: bool) -> None:
+def _record_outcome(state: dict, race: Race, won: bool, finish_position: int | None = None, record_finish: bool = False) -> None:
     state["starts"] += 1
     state["wins"] += int(won)
     state["last_date"] = race.race_date
@@ -117,12 +124,20 @@ def _record_outcome(state: dict, race: Race, won: bool) -> None:
     for key, value in (("surface", race.surface or "unknown"), ("distance", race.distance_meters or 0), ("track", race.track_id)):
         state[key][value][0] += 1
         state[key][value][1] += int(won)
+    if record_finish and finish_position is not None:
+        state["recent_finishes"].append(finish_position)
+        state["recent_finishes"] = state["recent_finishes"][-5:]
+        for key, value in (("surface_finish", race.surface or "unknown"), ("distance_finish", race.distance_meters or 0)):
+            state[key][value][0] += 1
+            state[key][value][1] += finish_position
 
 
 def _apply_race_to_history(race: Race, result: RaceResult, entries: list[RaceEntry], horses: dict, jockeys: dict, trainers: dict, pairs: dict) -> None:
+    positions = {int(number): index + 1 for index, number in enumerate(result.official_order or [])}
     for entry in entries:
         won = entry.id == result.winner_entry_id
-        _record_outcome(horses[entry.horse_id], race, won)
+        finish_position = positions.get(entry.program_number)
+        _record_outcome(horses[entry.horse_id], race, won, finish_position, record_finish=True)
         if entry.jockey_id is not None:
             _record_outcome(jockeys[entry.jockey_id], race, won)
         if entry.trainer_id is not None:
