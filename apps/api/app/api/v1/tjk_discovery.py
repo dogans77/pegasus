@@ -18,9 +18,10 @@ router = APIRouter(prefix="/crawler/tjk", tags=["TJK Discovery"])
 # City IDs used by the official TJK daily-program route. The importer checks
 # each candidate and uses only a page that contains a valid race card.
 CANDIDATE_CITIES = [
-    ("Istanbul", 1),
+    # TJK city identifiers: Bursa=1, Izmir=2, Istanbul=3.
+    ("Istanbul", 3),
     ("Izmir", 2),
-    ("Bursa", 3),
+    ("Bursa", 1),
     ("Adana", 4),
     ("Ankara", 5),
     ("Kocaeli", 6),
