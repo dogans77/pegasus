@@ -229,9 +229,16 @@ from app.models.race_entry import RaceEntry
 from app.models.race_result import RaceResult
 from app.services.tjk_results import TjkResultsClient
 
-RESULT_CITIES = [("Ankara", "Ankara", 5), ("Izmir", "\u0130zmir", 2)]
-
-
+RESULT_CITIES = [
+    ("Istanbul", "\u0130stanbul", 1),
+    ("Izmir", "\u0130zmir", 2),
+    ("Bursa", "Bursa", 3),
+    ("Adana", "Adana", 4),
+    ("Ankara", "Ankara", 5),
+    ("Kocaeli", "Kocaeli", 6),
+    ("Diyarbakir", "Diyarbak\u0131r", 10),
+    ("Elazig", "Elaz\u0131\u011f", 11),
+]
 def _result_candidates(race_date: date):
     client = TjkResultsClient()
     output = []
