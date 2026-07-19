@@ -11,6 +11,7 @@ from app.services import baseline_ml
 from app.services.race_intelligence import RankedEntry, analyze_race
 
 router = APIRouter(prefix="/recommendations", tags=["Explainable Recommendations"])
+_PEGASUS_RECOMMENDATION_CACHE: dict[int, dict] = {}
 
 
 def confidence_level(chaos_index: float, top_probability: float) -> str:
@@ -40,6 +41,9 @@ def explanation(top: RankedEntry, entries: list[RankedEntry], chaos_index: float
 
 
 def recommendation_for_race(db: Session, race_id: int) -> dict:
+    cached = _PEGASUS_RECOMMENDATION_CACHE.get(race_id)
+    if cached is not None:
+        return cached
     chaos_index, entries = analyze_race(db, race_id)
     model_version = "baseline-rules-v1"
     try:
@@ -54,7 +58,7 @@ def recommendation_for_race(db: Session, race_id: int) -> dict:
     except LookupError:
         pass
     top = entries[0]
-    return {
+    result = {
         "race_id": race_id,
         "model_version": model_version,
         "confidence": confidence_level(chaos_index, top.win_probability),
@@ -64,6 +68,8 @@ def recommendation_for_race(db: Session, race_id: int) -> dict:
         "reasons": explanation(top, entries, chaos_index),
         "disclaimer": "Olasilik tabanli karar destegidir; kesin sonuc iddiasi tasimaz.",
     }
+    _PEGASUS_RECOMMENDATION_CACHE[race_id] = result
+    return result
 
 
 @router.get("/races/{race_id}")
@@ -76,13 +82,31 @@ def get_recommendation(race_id: int, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@router.post("/warm/daily")
+def warm_daily_recommendations(race_date: date, db: Session = Depends(get_db)) -> dict:
+    races = list(db.scalars(select(Race).where(Race.race_date == race_date).order_by(Race.race_number)))
+    warmed, skipped = [], []
+    for race in races:
+        try:
+            recommendation_for_race(db, race.id)
+            warmed.append(race.id)
+        except (LookupError, ValueError):
+            skipped.append(race.id)
+    return {"race_date": race_date, "warmed_race_ids": warmed, "skipped_race_ids": skipped, "cache_size": len(_PEGASUS_RECOMMENDATION_CACHE)}
+
+
+@router.post("/cache/clear")
+def clear_recommendation_cache() -> dict:
+    _PEGASUS_RECOMMENDATION_CACHE.clear()
+    return {"cleared": True}
+
 @router.get("/daily")
 def get_daily_recommendations(race_date: date, db: Session = Depends(get_db)) -> list[dict]:
     races = list(db.scalars(select(Race).options(selectinload(Race.track)).where(Race.race_date == race_date).order_by(Race.race_number)))
     output = []
     for race in races:
         try:
-            item = recommendation_for_race(db, race.id)
+            item = dict(recommendation_for_race(db, race.id))
         except ValueError:
             continue
         item["city"] = race.track.city
