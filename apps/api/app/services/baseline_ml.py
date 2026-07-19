@@ -100,6 +100,20 @@ def _race_metrics(frame: pd.DataFrame, probabilities) -> dict:
     }
 
 
+def _favorite_metrics(frame: pd.DataFrame, column: str, ascending: bool = False) -> dict:
+    """Evaluate a transparent single-signal benchmark on the same holdout races."""
+    if frame.empty:
+        return {"evaluated_races": 0, "top1_accuracy": None}
+    scored = frame[["race_id", "winner", column]].copy()
+    fallback = float("inf") if ascending else float("-inf")
+    scored["signal"] = pd.to_numeric(scored[column], errors="coerce").fillna(fallback)
+    ranked = scored.sort_values(["race_id", "signal"], ascending=[True, ascending])
+    groups = list(ranked.groupby("race_id", sort=False))
+    if not groups:
+        return {"evaluated_races": 0, "top1_accuracy": None}
+    top1 = sum(int(group.iloc[0].winner == 1) for _, group in groups) / len(groups)
+    return {"evaluated_races": len(groups), "top1_accuracy": round(float(top1), 4)}
+
 def train(db: Session) -> dict:
     frame = training_frame(db)
     settled_races = int(frame["race_id"].nunique()) if not frame.empty else 0
@@ -117,6 +131,11 @@ def train(db: Session) -> dict:
     pipeline.fit(train_frame[FEATURES], train_frame["winner"])
     probabilities = pipeline.predict_proba(test_frame[FEATURES])[:, 1]
     metrics = _race_metrics(test_frame, probabilities)
+    benchmarks = {
+        "agf_favorite": _favorite_metrics(test_frame, "agf_percent"),
+        "handicap_leader": _favorite_metrics(test_frame, "handicap_rating"),
+        "lowest_weight": _favorite_metrics(test_frame, "weight_kg", ascending=True),
+    }
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     metadata = {
         "model_version": MODEL_VERSION,
@@ -126,6 +145,7 @@ def train(db: Session) -> dict:
         "test_entries": int(len(test_frame)),
         "feature_names": FEATURES,
         "metrics": metrics,
+        "benchmarks": benchmarks,
         "note": "Temporal holdout baseline. This is a decision-support probability model, not a guarantee.",
     }
     joblib.dump({"pipeline": pipeline, "metadata": metadata}, MODEL_PATH)
