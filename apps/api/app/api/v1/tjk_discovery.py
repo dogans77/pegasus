@@ -317,3 +317,72 @@ def import_results(race_date: date, db: Session = Depends(get_db)):
                 updated += 1
     db.commit()
     return {"pages_found": len(found), "results_created": created, "results_updated": updated, "results_skipped": skipped}
+
+# PEGASUS_TJK_IMPORT_ALL_PROGRAMS
+@router.post("/import-all-available")
+def import_all_available(race_date: date, db: Session = Depends(get_db)):
+    run = CrawlerRun(source="tjk", job_name="import_all_daily_programs", status="running")
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    programs = discover(race_date)
+    if not programs:
+        run.status = "failed"
+        run.error_message = "No valid TJK daily program was found for the requested date."
+        run.finished_at = datetime.now(timezone.utc)
+        db.commit()
+        raise HTTPException(status_code=404, detail=run.error_message)
+
+    created = updated = 0
+    cities = []
+    for city, _, source_url, raw_html, races in programs:
+        checksum = hashlib.sha256(raw_html.encode("utf-8")).hexdigest()
+        document = db.scalar(select(SourceDocument).where(SourceDocument.source_url == source_url))
+        if document is None:
+            db.add(SourceDocument(
+                provider="tjk",
+                document_type="daily_program_html",
+                source_url=source_url,
+                checksum=checksum,
+                race_date=race_date,
+                city=city,
+                content=raw_html,
+            ))
+        else:
+            document.checksum = checksum
+            document.content = raw_html
+
+        track = db.scalar(select(Track).where(Track.name == city))
+        if track is None:
+            track = Track(name=city, city=city)
+            db.add(track)
+            db.flush()
+        cities.append(city)
+        for item in races:
+            race = db.scalar(
+                select(Race).where(
+                    Race.track_id == track.id,
+                    Race.race_date == race_date,
+                    Race.race_number == item.race_number,
+                )
+            )
+            if race is None:
+                db.add(Race(track_id=track.id, race_date=race_date, **item.__dict__))
+                created += 1
+            else:
+                race.scheduled_time = item.scheduled_time
+                race.distance_meters = item.distance_meters
+                race.surface = item.surface
+                race.race_class = item.race_class
+                updated += 1
+
+    run.status = "completed"
+    run.records_processed = created + updated
+    run.finished_at = datetime.now(timezone.utc)
+    db.commit()
+    return {
+        "race_date": race_date,
+        "cities": cities,
+        "races_created": created,
+        "races_updated": updated,
+    }
