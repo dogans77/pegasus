@@ -12,6 +12,7 @@ from app.api.v1.races import router as race_router
 from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.results import router as results_router
 from app.api.v1.tracks import router as track_router
+from app.api.v1.value import router as value_router
 from app.api.v1.tjk import router as tjk_router
 from app.api.v1.tjk_discovery import router as tjk_discovery_router
 from app.api.v1.tjk_csv import router as tjk_csv_router
@@ -37,6 +38,7 @@ app.include_router(race_router, prefix="/api/v1")
 app.include_router(recommendations_router, prefix="/api/v1")
 app.include_router(results_router, prefix="/api/v1")
 app.include_router(track_router, prefix="/api/v1")
+app.include_router(value_router, prefix="/api/v1")
 app.include_router(people_router, prefix="/api/v1")
 app.include_router(prediction_audit_router, prefix="/api/v1")
 app.include_router(crawler_router, prefix="/api/v1")
