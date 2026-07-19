@@ -7,7 +7,7 @@ type DailySummary = { race_id: number; city: string; race_number: number; schedu
 // PEGASUS_PERFORMANCE_DASHBOARD
 type Performance = { evaluated_races: number; top1_accuracy: number | null; top3_coverage: number | null };
 
-const api = "http://127.0.0.1:8055/api/v1";
+const api = "http://127.0.0.1:8042/api/v1";
 const copy = {
   title: "Yar\u0131\u015f\u0131 tahmin etmekten \u00f6nce, yar\u0131\u015f\u0131 anlay\u0131n.",
   subtitle: "Form, piyasa, tempo ve risk sinyallerini tek kontrol panelinde birle\u015ftiren at yar\u0131\u015f\u0131 analiz altyap\u0131s\u0131.",

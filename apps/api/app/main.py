@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.analytics import router as analytics_router
 from app.api.v1.horses import router as horse_router
 from app.api.v1.intelligence import router as intelligence_router
 from app.api.v1.crawler import router as crawler_router
@@ -27,6 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(horse_router, prefix="/api/v1")
 app.include_router(intelligence_router, prefix="/api/v1")
 app.include_router(race_router, prefix="/api/v1")
