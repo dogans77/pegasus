@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.models.race import Race
+from app.services import baseline_ml
 from app.services.race_intelligence import RankedEntry, analyze_race
 
 router = APIRouter(prefix="/recommendations", tags=["Explainable Recommendations"])
@@ -31,7 +33,7 @@ def explanation(top: RankedEntry, entries: list[RankedEntry], chaos_index: float
     if top.weight_kg is not None and weights and top.weight_kg == min(weights):
         reasons.append("Kilo avantaj\u0131")
     if not reasons:
-        reasons.append("Baseline g\u00fc\u00e7 skorunda lider")
+        reasons.append("G\u00fc\u00e7 skorunda lider")
     if chaos_index >= 70:
         reasons.append("Y\u00fcksek s\u00fcrpriz riski")
     return reasons
@@ -39,15 +41,28 @@ def explanation(top: RankedEntry, entries: list[RankedEntry], chaos_index: float
 
 def recommendation_for_race(db: Session, race_id: int) -> dict:
     chaos_index, entries = analyze_race(db, race_id)
+    model_version = "baseline-rules-v1"
+    try:
+        model_prediction = baseline_ml.predict_race(db, race_id)
+        model_probabilities = {item["entry_id"]: item["win_probability"] for item in model_prediction["entries"]}
+        entries = sorted(
+            [replace(item, win_probability=model_probabilities.get(item.entry_id, item.win_probability)) for item in entries],
+            key=lambda item: item.win_probability,
+            reverse=True,
+        )
+        model_version = model_prediction["model_version"]
+    except LookupError:
+        pass
     top = entries[0]
     return {
         "race_id": race_id,
+        "model_version": model_version,
         "confidence": confidence_level(chaos_index, top.win_probability),
         "chaos_index": chaos_index,
         "primary": top.__dict__,
         "alternatives": [item.__dict__ for item in entries[1:4]],
         "reasons": explanation(top, entries, chaos_index),
-        "disclaimer": "Baseline analizidir; kesin sonuc iddiasi tasimaz.",
+        "disclaimer": "Olasilik tabanli karar destegidir; kesin sonuc iddiasi tasimaz.",
     }
 
 
@@ -63,14 +78,7 @@ def get_recommendation(race_id: int, db: Session = Depends(get_db)) -> dict:
 
 @router.get("/daily")
 def get_daily_recommendations(race_date: date, db: Session = Depends(get_db)) -> list[dict]:
-    races = list(
-        db.scalars(
-            select(Race)
-            .options(selectinload(Race.track))
-            .where(Race.race_date == race_date)
-            .order_by(Race.race_number)
-        )
-    )
+    races = list(db.scalars(select(Race).options(selectinload(Race.track)).where(Race.race_date == race_date).order_by(Race.race_number)))
     output = []
     for race in races:
         try:

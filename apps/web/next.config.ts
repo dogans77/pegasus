@@ -1,8 +1,9 @@
-﻿import type { NextConfig } from "next";
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // FastAPI endpoints intentionally use trailing slashes. Keeping the URL
-  // unchanged prevents Next from redirecting the proxy request outside /backend.
+  // Local dashboard and API tools use both localhost and 127.0.0.1.
+  // Explicit origins keep development HMR available without weakening public routes.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   skipTrailingSlashRedirect: true,
   async rewrites() {
     return [
