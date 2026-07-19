@@ -28,7 +28,10 @@ async function getJson<T>(path: string, fallback: T): Promise<T> {
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [races, tracks, performance, model] = await Promise.all([getJson<Race[]>("/races/", []), getJson<Track[]>("/tracks/", []), getJson<Performance>("/results/performance", { evaluated_races: 0, top1_accuracy: null, top3_coverage: null }), getJson<ModelStatus>("/ml/status", { trained: false })]);
+  const [allRaces, tracks, performance, model] = await Promise.all([getJson<Race[]>("/races/", []), getJson<Track[]>("/tracks/", []), getJson<Performance>("/results/performance", { evaluated_races: 0, top1_accuracy: null, top3_coverage: null }), getJson<ModelStatus>("/ml/status", { trained: false })]);
+  // PEGASUS_ACTIVE_RACE_DAY: show the newest card set; historical data stays available through detail links and APIs.
+  const activeRaceDate = allRaces.reduce((latest, race) => !latest || race.race_date > latest ? race.race_date : latest, "");
+  const races = activeRaceDate ? allRaces.filter((race) => race.race_date === activeRaceDate) : [];
   const raceCards: RaceCard[] = await Promise.all(races.map(async (race) => ({ ...race, entries: await getJson<Entry[]>(`/races/${race.id}/entries`, []) })));
   const runnerCount = raceCards.reduce((total, race) => total + race.entries.length, 0);
   const raceDate = races[0]?.race_date;
