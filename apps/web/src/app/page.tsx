@@ -1,46 +1,25 @@
-type Race = { id: number; race_number: number; race_date: string; scheduled_time: string | null; distance_meters: number; surface: string; track: { name: string; city: string } };
-type Track = { id: number; name: string; city: string };
-type Entry = { id?: number; entry_id?: number; program_number: number; horse_name: string | null; jockey_name?: string | null; handicap_rating: number | null; agf_percent: number | null; weight_kg: number | null; win_probability?: number };
-type RaceCard = Race & { entries: Entry[] };
-type DailySummary = { race_id: number; city: string; race_number: number; scheduled_time: string | null; chaos_index: number; method: string; top_entry: Entry };
-type Performance = { evaluated_races: number; top1_accuracy: number | null; top3_coverage: number | null };
-type ModelStatus = { trained: boolean; model_version?: string; metrics?: { top1_accuracy?: number | null; top3_coverage?: number | null } };
-type ModelHealth = { trained: boolean; candidate_model?: string; deployed_model?: string; candidate_top1_accuracy?: number | null; handicap_benchmark_top1_accuracy?: number | null; decision?: string };
-
-const api = "http://127.0.0.1:8042/api/v1";
-const entryKey = (entry: Entry, index = 0) => `${entry.entry_id ?? entry.id ?? entry.program_number}-${index}`;
-
-async function getJson<T>(path: string, fallback: T): Promise<T> {
-  try { const response = await fetch(`${api}${path}`, { cache: "no-store" }); return response.ok ? (await response.json()) as T : fallback; } catch { return fallback; }
-}
-
-export const dynamic = "force-dynamic";
-
-export default async function Home() {
-  const [allRaces, tracks, performance, model, modelHealth] = await Promise.all([
-    getJson<Race[]>("/races/", []), getJson<Track[]>("/tracks/", []),
-    getJson<Performance>("/results/performance", { evaluated_races: 0, top1_accuracy: null, top3_coverage: null }),
-    getJson<ModelStatus>("/ml/status", { trained: false }),
-    getJson<ModelHealth>("/decision/model-health", { trained: false }),
-  ]);
-  const activeDate = allRaces.reduce((latest, race) => !latest || race.race_date > latest ? race.race_date : latest, "");
-  const races = activeDate ? allRaces.filter((race) => race.race_date === activeDate) : [];
-  const cards: RaceCard[] = await Promise.all(races.map(async (race) => ({ ...race, entries: await getJson<Entry[]>(`/races/${race.id}/entries`, []) })));
-  const daily = activeDate ? await getJson<DailySummary[]>(`/races/daily-intelligence?race_date=${activeDate}`, []) : [];
-  const featured = daily[0];
-  const runnerCount = cards.reduce((total, card) => total + card.entries.length, 0);
-  const statusText = races.length ? "Veri güncel" : "Veri bekleniyor";
-
-  return <main className="dashboard-shell">
-    <header className="dashboard-nav"><a className="brand" href="/"><span>PEGASUS</span><small>RACE INTELLIGENCE</small></a><div className="nav-meta"><span>{activeDate || "Tarih bekleniyor"}</span><b className={races.length ? "live" : "idle"}>{statusText}</b></div></header>
-    <section className="decision-hero">
-      <div><p className="eyebrow">GÜNLÜK KARAR MERKEZİ</p><h1>Yarışı anlamak, tahmin etmekten daha önemli.</h1><p>Form, piyasa ve risk sinyallerini tek bir sade kontrol panelinde takip edin.</p>{featured ? <a className="primary-action" href={`/races/${featured.race_id}`}>Günün ilk analizini aç <span>→</span></a> : <span className="primary-action disabled">Yarış kartı bekleniyor</span>}</div>
-      <aside className="featured-card"><p>ÖNE ÇIKAN ANALİZ</p>{featured ? (<div className="featured-content"><b>{featured.city} · {featured.race_number}. Koşu</b><strong>{featured.top_entry.program_number}. {featured.top_entry.horse_name}</strong><div className="featured-probability"><span>Gösterge olasılığı</span><em>%{featured.top_entry.win_probability?.toFixed(1) ?? "--"}</em></div><small>Chaos {featured.chaos_index}/100 · {featured.scheduled_time?.slice(0, 5) ?? "--:--"}</small></div>) : (<span>Güncel yarış verisi alındığında burada görünecek.</span>)}</aside>
-    </section>
-    <section className="signal-row"><article><span>Güncel yarış</span><strong>{races.length}</strong><small>{runnerCount} at girişi</small></article><article><span>Hipodrom</span><strong>{tracks.length}</strong><small>Veri kaynağında tanımlı</small></article><article><span>Sonuç doğrulaması</span><strong>{performance.evaluated_races}</strong><small>Top 1: %{Math.round((performance.top1_accuracy ?? 0) * 100)}</small></article><article><span>Yayındaki karar modeli</span><strong>{modelHealth.deployed_model ?? model.model_version ?? "--"}</strong><small>{modelHealth.decision ?? "Model doğrulaması bekleniyor"}</small></article></section>
-    <section className="workspace">
-      <section className="panel race-board"><div className="panel-head"><div><p className="eyebrow">BUGÜNÜN PROGRAMI</p><h2>Yarış kartları</h2></div><span>{activeDate || "--"}</span></div>{cards.length ? <div className="race-board-list">{cards.map((race) => <a className="race-board-row" key={race.id} href={`/races/${race.id}`}><div><b>{race.track.city} · {race.race_number}. Koşu</b><small>{race.scheduled_time?.slice(0, 5) ?? "--:--"} · {race.distance_meters}m · {race.surface}</small></div><div className="runner-preview">{race.entries.slice(0, 3).map((entry, index) => <span key={entryKey(entry, index)}>{entry.program_number}. {entry.horse_name}</span>)}</div><em>{race.entries.length} at <i>→</i></em></a>)}</div> : <div className="empty">TJK programı aktarıldığında yarışlar burada görünecek.</div>}</section>
-      <aside className="model-side"><article className="panel model-card"><p className="eyebrow">MODEL SAĞLIĞI</p><h2>{modelHealth.trained ? "Doğrulanmış karar" : "Model bekleniyor"}</h2><div className="model-score">{modelHealth.trained ? `%${Math.round((modelHealth.candidate_top1_accuracy ?? 0) * 100)}` : "--"}</div><p>Temporal test Top 1 isabet oranı</p><dl><div><dt>Aday model</dt><dd>{modelHealth.candidate_model ?? "--"}</dd></div><div><dt>Handikap referansı</dt><dd>%{Math.round((modelHealth.handicap_benchmark_top1_accuracy ?? 0) * 100)}</dd></div></dl></article><article className="panel guide-card"><p className="eyebrow">NASIL OKUNUR?</p><ul><li><b>Chaos:</b> Yarışın belirsizlik seviyesi.</li><li><b>Value:</b> Model ile AGF arasındaki ayrışma.</li><li><b>Kapsama:</b> Risk seviyesine göre aday sayısı.</li></ul></article></aside>
-    </section>
-  </main>;
+type Race = { id:number; race_number:number; race_date:string; scheduled_time:string|null; distance_meters:number; surface:string; track:{name:string;city:string} };
+type Entry = { id?:number; entry_id?:number; program_number:number; horse_name:string|null; handicap_rating:number|null; agf_percent:number|null; weight_kg:number|null; win_probability?:number };
+type Daily = { race_id:number; city:string; race_number:number; scheduled_time:string|null; chaos_index:number; top_entry:Entry };
+type Health = { trained:boolean; deployed_model?:string; candidate_top1_accuracy?:number|null; handicap_benchmark_top1_accuracy?:number|null; decision?:string };
+const api='http://127.0.0.1:8042/api/v1';
+async function getJson<T>(path:string, fallback:T):Promise<T>{try{const r=await fetch(`${api}${path}`,{cache:'no-store'});return r.ok?await r.json() as T:fallback}catch{return fallback}}
+const clean=(value:string|null|undefined)=>{const source=value??'';try{const escaped=source.replace(/\\u([0-9a-f]{4})/gi,(_,code)=>String.fromCharCode(parseInt(code,16)));return /(?:Ãƒ|Ã‚)/.test(escaped)?decodeURIComponent(escape(escaped)):escaped}catch{return source}};
+const key=(entry:Entry,index:number)=>`${entry.entry_id??entry.id??entry.program_number}-${index}`;
+export const dynamic='force-dynamic';
+export default async function Home(){
+ const [allRaces,health]=await Promise.all([getJson<Race[]>('/races/',[]),getJson<Health>('/decision/model-health',{trained:false})]);
+ const localToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul'}).format(new Date());
+ const dates=[...new Set(allRaces.map(r=>r.race_date))].sort();
+ const activeDate=dates.includes(localToday)?localToday:(dates.at(-1)??'');
+ const races=allRaces.filter(r=>r.race_date===activeDate).sort((a,b)=>`${a.scheduled_time??''}-${a.track.city}`.localeCompare(`${b.scheduled_time??''}-${b.track.city}`));
+ const cards=await Promise.all(races.map(async race=>({...race,entries:await getJson<Entry[]>(`/races/${race.id}/entries`,[])})));
+ const daily=activeDate?await getJson<Daily[]>(`/races/daily-intelligence?race_date=${activeDate}`,[]):[];
+ const dailyByRace=new Map(daily.map(item=>[item.race_id,item])); const featured=daily[0]; const runnerCount=cards.reduce((n,r)=>n+r.entries.length,0);
+ return <main className="dashboard-shell bright-dashboard">
+  <header className="dashboard-nav"><a className="brand" href="/"><span>PEGASUS</span><small>RACE INTELLIGENCE</small></a><nav><a href="#program">Program</a><a href="#model">Model</a></nav><div className="nav-meta"><span>{activeDate||'Tarih bekleniyor'}</span><b className={races.length?'live':'idle'}>{races.length?'Canlı program':'Veri bekleniyor'}</b></div></header>
+  <section className="welcome"><div><p className="eyebrow">BUGÜNÜN YARIŞ MASASI</p><h1>Net sinyal, sakin karar.</h1><p>Bugünün resmi programında <b>{races.length} koşu</b> ve <b>{runnerCount} at</b> incelenmeye hazır. Yarış kartından adayları, riski ve piyasa ayrşmasını birlikte gör.</p></div><aside className="today-highlight"><small>ÖNE ÇIKAN KART</small>{featured?<><b>{clean(featured.city)} · {featured.race_number}. Koşu</b><strong>{featured.top_entry.program_number}. {clean(featured.top_entry.horse_name)}</strong><span>%{featured.top_entry.win_probability?.toFixed(1)??'--'} model olasılığı</span><a href={`/races/${featured.race_id}`}>Kartı aç →</a></>:<span>Güncel analiz hesaplanıyor.</span>}</aside></section>
+  <section className="signal-row"><article><span>Aktif koşu</span><strong>{races.length}</strong><small>{activeDate||'--'}</small></article><article><span>At girişi</span><strong>{runnerCount}</strong><small>Bugünün kartları</small></article><article><span>Hipodrom</span><strong>{new Set(races.map(r=>r.track.city)).size}</strong><small>{[...new Set(races.map(r=>clean(r.track.city)))].join(' · ')||'--'}</small></article><article><span>Model kontrolü</span><strong>{health.trained?'Hazır':'Bekliyor'}</strong><small>{clean(health.decision)||health.deployed_model||'Doğrulama yapılıyor'}</small></article></section>
+  <section className="workspace"><section className="panel race-board" id="program"><div className="panel-head"><div><p className="eyebrow">RESMİ GÜNLÜK PROGRAM</p><h2>Bugün hangi hipodromlarda koşu var?</h2></div><span>{cards.length} kart</span></div>{cards.length?<div className="race-board-list">{cards.map(race=>{const intel=dailyByRace.get(race.id);return <a className="race-board-row" key={race.id} href={`/races/${race.id}`}><div className="race-time">{race.scheduled_time?.slice(0,5)??'--:--'}</div><div><b>{clean(race.track.city)} · {race.race_number}. Koşu</b><small>{race.distance_meters}m · {clean(race.surface)} · {race.entries.length} at</small></div><div className="runner-preview">{race.entries.slice(0,2).map((e,i)=><span key={key(e,i)}>{e.program_number}. {clean(e.horse_name)}</span>)}</div><em>{intel?`Chaos ${intel.chaos_index}`:'Kartı incele'} →</em></a>})}</div>:<div className="empty">Bugün için aktarılmış koşu bulunamadı.</div>}</section><aside className="model-side" id="model"><article className="panel model-card"><p className="eyebrow">MODEL DURUMU</p><h2>{health.deployed_model??'Model bekleniyor'}</h2><div className="model-score">%{Math.round((health.candidate_top1_accuracy??0)*100)}</div><p>Zaman ayrımlı testte birinci aday isabeti.</p><dl><div><dt>Model sonucu</dt><dd>{clean(health.decision)||'Kontrol ediliyor'}</dd></div><div><dt>Handikap referansı</dt><dd>%{Math.round((health.handicap_benchmark_top1_accuracy??0)*100)}</dd></div></dl></article><article className="panel guide-card"><p className="eyebrow">KISA REHBER</p><ul><li><b>Chaos:</b> Yarış ne kadar belirsiz?</li><li><b>Value:</b> Model ve AGF nerede ayrışıyor?</li><li><b>Koşu kartı:</b> Adayları ve gerekçeleri birlikte incele.</li></ul></article></aside></section>
+ </main>
 }
