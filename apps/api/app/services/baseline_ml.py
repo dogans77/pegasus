@@ -188,8 +188,18 @@ def train(db: Session) -> dict:
     pipeline.fit(train_frame[FEATURES], train_frame["winner"])
     metrics = _race_metrics(test_frame, pipeline.predict_proba(test_frame[FEATURES])[:, 1])
     benchmarks = {"agf_favorite": _favorite_metrics(test_frame, "agf_percent"), "handicap_leader": _favorite_metrics(test_frame, "handicap_rating"), "lowest_weight": _favorite_metrics(test_frame, "weight_kg", ascending=True)}
+    challenger_top1 = metrics.get("top1_accuracy") or 0.0
+    benchmark_top1 = benchmarks["handicap_leader"].get("top1_accuracy") or 0.0
+    selected = MODEL_VERSION if challenger_top1 >= benchmark_top1 else "handicap-leader-v1"
+    deployment = {
+        "policy": "champion_challenger_v1",
+        "selected_model": selected,
+        "challenger_top1_accuracy": challenger_top1,
+        "handicap_benchmark_top1_accuracy": benchmark_top1,
+        "reason": "Probability model outperformed the transparent handicap benchmark." if selected == MODEL_VERSION else "Transparent handicap benchmark outperformed the probability model on the temporal holdout.",
+    }
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
-    metadata = {"model_version": MODEL_VERSION, "trained_at": datetime.now(timezone.utc).isoformat(), "settled_races": settled_races, "training_entries": int(len(train_frame)), "test_entries": int(len(test_frame)), "feature_names": FEATURES, "metrics": metrics, "benchmarks": benchmarks, "note": "Temporal horse-form model. Probabilities are decision support, not guarantees."}
+    metadata = {"model_version": MODEL_VERSION, "trained_at": datetime.now(timezone.utc).isoformat(), "settled_races": settled_races, "training_entries": int(len(train_frame)), "test_entries": int(len(test_frame)), "feature_names": FEATURES, "metrics": metrics, "benchmarks": benchmarks, "deployment": deployment, "note": "Temporal horse-form model. Probabilities are decision support, not guarantees."}
     joblib.dump({"pipeline": pipeline, "metadata": metadata}, MODEL_PATH)
     METADATA_PATH.write_text(json.dumps(metadata, ensure_ascii=True, indent=2), encoding="utf-8")
     return metadata
@@ -215,7 +225,12 @@ def predict_race(db: Session, race_id: int) -> dict:
         _apply_race_to_history(prior_race, result, prior_entries, horses, jockeys, trainers, pairs)
     rows = [_entry_row(entry, race, len(entries), horses[entry.horse_id], jockeys[entry.jockey_id], trainers[entry.trainer_id], pairs[(entry.jockey_id, entry.trainer_id)]) for entry in entries]
     artifact = joblib.load(MODEL_PATH)
-    raw = artifact["pipeline"].predict_proba(pd.DataFrame(rows)[FEATURES])[:, 1]
-    normalizer = max(float(raw.sum()), 1e-9)
+    deployment = artifact["metadata"].get("deployment", {"selected_model": MODEL_VERSION})
+    selected_model = deployment.get("selected_model", MODEL_VERSION)
+    if selected_model == "handicap-leader-v1":
+        raw = [max(float(row["handicap_rating"] or 0), 0.01) for row in rows]
+    else:
+        raw = artifact["pipeline"].predict_proba(pd.DataFrame(rows)[FEATURES])[:, 1]
+    normalizer = max(float(sum(raw)), 1e-9)
     ranked = sorted([{"entry_id": row["entry_id"], "program_number": row["program_number"], "win_probability": round(float(value / normalizer * 100), 2), "days_since_last_start": row["days_since_last_start"], "prior_starts": row["prior_starts"], "prior_win_rate": row["prior_win_rate"]} for row, value in zip(rows, raw)], key=lambda item: item["win_probability"], reverse=True)
-    return {"race_id": race_id, "model_version": MODEL_VERSION, "entries": ranked}
+    return {"race_id": race_id, "model_version": selected_model, "candidate_model": MODEL_VERSION, "deployment": deployment, "entries": ranked}
