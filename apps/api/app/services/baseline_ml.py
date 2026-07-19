@@ -19,18 +19,21 @@ from app.models.race import Race
 from app.models.race_entry import RaceEntry
 from app.models.race_result import RaceResult
 
-MODEL_VERSION = "form-logistic-v2"
+MODEL_VERSION = "participant-logistic-v3"
 NUMERIC_FEATURES = [
     "handicap_rating", "weight_kg", "agf_percent", "barrier", "distance_meters", "field_size",
     "days_since_last_start", "prior_starts", "prior_wins", "prior_win_rate", "last_start_won",
     "same_surface_starts", "same_surface_win_rate", "same_distance_starts", "same_distance_win_rate",
     "same_track_starts", "same_track_win_rate",
+    "jockey_prior_starts", "jockey_prior_win_rate",
+    "trainer_prior_starts", "trainer_prior_win_rate",
+    "jockey_trainer_prior_starts", "jockey_trainer_prior_win_rate",
 ]
 CATEGORICAL_FEATURES = ["surface", "race_class"]
 FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 ARTIFACT_DIR = Path(__file__).resolve().parent.parent / "ml" / "artifacts"
-MODEL_PATH = ARTIFACT_DIR / "form_logistic_v2.joblib"
-METADATA_PATH = ARTIFACT_DIR / "form_logistic_v2.json"
+MODEL_PATH = ARTIFACT_DIR / "participant_logistic_v3.joblib"
+METADATA_PATH = ARTIFACT_DIR / "participant_logistic_v3.json"
 
 
 def _empty_state() -> dict:
@@ -41,7 +44,7 @@ def _rate(bucket) -> float | None:
     return round(bucket[1] / bucket[0], 5) if bucket and bucket[0] else None
 
 
-def _history_features(entry: RaceEntry, race: Race, state: dict) -> dict:
+def _history_features(entry: RaceEntry, race: Race, state: dict, jockey_state: dict, trainer_state: dict, pair_state: dict) -> dict:
     surface = race.surface or "unknown"
     distance = race.distance_meters or 0
     track_id = race.track_id
@@ -61,10 +64,16 @@ def _history_features(entry: RaceEntry, race: Race, state: dict) -> dict:
         "same_distance_win_rate": _rate(distance_stats),
         "same_track_starts": track_stats[0],
         "same_track_win_rate": _rate(track_stats),
+        "jockey_prior_starts": jockey_state["starts"],
+        "jockey_prior_win_rate": round(jockey_state["wins"] / jockey_state["starts"], 5) if jockey_state["starts"] else None,
+        "trainer_prior_starts": trainer_state["starts"],
+        "trainer_prior_win_rate": round(trainer_state["wins"] / trainer_state["starts"], 5) if trainer_state["starts"] else None,
+        "jockey_trainer_prior_starts": pair_state["starts"],
+        "jockey_trainer_prior_win_rate": round(pair_state["wins"] / pair_state["starts"], 5) if pair_state["starts"] else None,
     }
 
 
-def _entry_row(entry: RaceEntry, race: Race, field_size: int, state: dict | None = None) -> dict:
+def _entry_row(entry: RaceEntry, race: Race, field_size: int, state: dict | None = None, jockey_state: dict | None = None, trainer_state: dict | None = None, pair_state: dict | None = None) -> dict:
     row = {
         "entry_id": entry.id,
         "race_id": race.id,
@@ -79,7 +88,7 @@ def _entry_row(entry: RaceEntry, race: Race, field_size: int, state: dict | None
         "surface": race.surface or "unknown",
         "race_class": race.race_class or "unknown",
     }
-    row.update(_history_features(entry, race, state or _empty_state()))
+    row.update(_history_features(entry, race, state or _empty_state(), jockey_state or _empty_state(), trainer_state or _empty_state(), pair_state or _empty_state()))
     return row
 
 
@@ -100,30 +109,40 @@ def _settled_groups(db: Session, before_date=None) -> list[tuple[Race, RaceResul
     return list(grouped.values())
 
 
-def _apply_race_to_history(race: Race, result: RaceResult, entries: list[RaceEntry], history: dict[int, dict]) -> None:
+def _record_outcome(state: dict, race: Race, won: bool) -> None:
+    state["starts"] += 1
+    state["wins"] += int(won)
+    state["last_date"] = race.race_date
+    state["last_won"] = won
+    for key, value in (("surface", race.surface or "unknown"), ("distance", race.distance_meters or 0), ("track", race.track_id)):
+        state[key][value][0] += 1
+        state[key][value][1] += int(won)
+
+
+def _apply_race_to_history(race: Race, result: RaceResult, entries: list[RaceEntry], horses: dict, jockeys: dict, trainers: dict, pairs: dict) -> None:
     for entry in entries:
-        state = history[entry.horse_id]
         won = entry.id == result.winner_entry_id
-        state["starts"] += 1
-        state["wins"] += int(won)
-        state["last_date"] = race.race_date
-        state["last_won"] = won
-        for key, value in (("surface", race.surface or "unknown"), ("distance", race.distance_meters or 0), ("track", race.track_id)):
-            state[key][value][0] += 1
-            state[key][value][1] += int(won)
+        _record_outcome(horses[entry.horse_id], race, won)
+        if entry.jockey_id is not None:
+            _record_outcome(jockeys[entry.jockey_id], race, won)
+        if entry.trainer_id is not None:
+            _record_outcome(trainers[entry.trainer_id], race, won)
+        if entry.jockey_id is not None and entry.trainer_id is not None:
+            _record_outcome(pairs[(entry.jockey_id, entry.trainer_id)], race, won)
 
 
 def training_frame(db: Session) -> pd.DataFrame:
-    history = defaultdict(_empty_state)
+    horses, jockeys, trainers, pairs = (defaultdict(_empty_state) for _ in range(4))
     records = []
     for race, result, entries in _settled_groups(db):
         if result.winner_entry_id is None or len(entries) < 2:
             continue
         for entry in entries:
-            record = _entry_row(entry, race, len(entries), history[entry.horse_id])
+            pair_key = (entry.jockey_id, entry.trainer_id)
+            record = _entry_row(entry, race, len(entries), horses[entry.horse_id], jockeys[entry.jockey_id], trainers[entry.trainer_id], pairs[pair_key])
             record["winner"] = int(entry.id == result.winner_entry_id)
             records.append(record)
-        _apply_race_to_history(race, result, entries, history)
+        _apply_race_to_history(race, result, entries, horses, jockeys, trainers, pairs)
     return pd.DataFrame(records)
 
 
@@ -191,10 +210,10 @@ def predict_race(db: Session, race_id: int) -> dict:
     entries = list(db.scalars(select(RaceEntry).where(RaceEntry.race_id == race_id).order_by(RaceEntry.program_number)))
     if len(entries) < 2:
         raise ValueError("At least two entries are required for prediction.")
-    history = defaultdict(_empty_state)
+    horses, jockeys, trainers, pairs = (defaultdict(_empty_state) for _ in range(4))
     for prior_race, result, prior_entries in _settled_groups(db, before_date=race.race_date):
-        _apply_race_to_history(prior_race, result, prior_entries, history)
-    rows = [_entry_row(entry, race, len(entries), history[entry.horse_id]) for entry in entries]
+        _apply_race_to_history(prior_race, result, prior_entries, horses, jockeys, trainers, pairs)
+    rows = [_entry_row(entry, race, len(entries), horses[entry.horse_id], jockeys[entry.jockey_id], trainers[entry.trainer_id], pairs[(entry.jockey_id, entry.trainer_id)]) for entry in entries]
     artifact = joblib.load(MODEL_PATH)
     raw = artifact["pipeline"].predict_proba(pd.DataFrame(rows)[FEATURES])[:, 1]
     normalizer = max(float(raw.sum()), 1e-9)
