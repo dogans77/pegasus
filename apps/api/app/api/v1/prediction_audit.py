@@ -21,13 +21,23 @@ def build_snapshot(db: Session, race_id: int) -> PredictionSnapshot:
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    snapshot = PredictionSnapshot(
-        race_id=race_id,
-        model_version=MODEL_VERSION,
-        chaos_index=chaos_index,
-        payload={"entries": [entry.__dict__ for entry in entries]},
+    payload = {"entries": [entry.__dict__ for entry in entries]}
+    snapshot = db.scalar(
+        select(PredictionSnapshot)
+        .where(PredictionSnapshot.race_id == race_id, PredictionSnapshot.model_version == MODEL_VERSION)
+        .order_by(PredictionSnapshot.generated_at.desc())
     )
-    db.add(snapshot)
+    if snapshot is None:
+        snapshot = PredictionSnapshot(
+            race_id=race_id,
+            model_version=MODEL_VERSION,
+            chaos_index=chaos_index,
+            payload=payload,
+        )
+        db.add(snapshot)
+    else:
+        snapshot.chaos_index = chaos_index
+        snapshot.payload = payload
     db.commit()
     db.refresh(snapshot)
     return snapshot
@@ -66,11 +76,11 @@ def list_snapshots(race_id: int, db: Session = Depends(get_db)) -> list[dict]:
 @router.post("/daily", status_code=status.HTTP_201_CREATED)
 def snapshot_daily(race_date: date, db: Session = Depends(get_db)) -> dict:
     races = list(db.scalars(select(Race).where(Race.race_date == race_date).order_by(Race.race_number)))
-    created = []
+    snapshots = []
     skipped = []
     for race in races:
         try:
-            created.append(serialize(build_snapshot(db, race.id)))
+            snapshots.append(serialize(build_snapshot(db, race.id)))
         except HTTPException:
             skipped.append(race.id)
-    return {"race_date": race_date, "snapshots_created": len(created), "race_ids_skipped": skipped, "snapshots": created}
+    return {"race_date": race_date, "snapshots_created": len(snapshots), "race_ids_skipped": skipped, "snapshots": snapshots}
