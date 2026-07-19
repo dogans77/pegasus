@@ -12,7 +12,8 @@ function risk(chaos:number){return chaos>=70?t.high:chaos>=40?t.medium:t.low}
 export const dynamic='force-dynamic';
 export default async function RaceDetail({params}:{params:Promise<{id:string}>}){
  const {id}=await params;const raceId=Number(id);
- const [race,entries]=await Promise.all([getJson<Race|null>(`/races/${raceId}`,null),getJson<Entry[]>(`/races/${raceId}/entries`,[])]);
+ const [directRace,entries]=await Promise.all([getJson<Race|null>(`/races/${raceId}`,null),getJson<Entry[]>(`/races/${raceId}/entries`,[])]);
+ const race=directRace??(await getJson<Race[]>('/races/',[])).find(item=>item.id===raceId)??null;
  if(!race)return <main className="detail-shell"><a href="/">{t.back}</a><div className="detail-empty">{t.noData}</div></main>;
  const daily=await getJson<Daily[]>(`/races/daily-intelligence?race_date=${race.race_date}`,[]);
  const intelligence=daily.find(item=>item.race_id===raceId);
