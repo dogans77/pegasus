@@ -12,3 +12,5 @@ coverage
 .pytest_cache
 .DS_Store
 *.log
+# Locally trained model artifacts
+apps/api/app/ml/artifacts/
