@@ -1,0 +1,10 @@
+.git
+.backup-*
+deploy-backups
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/*.pyc
+**/.env
+logs

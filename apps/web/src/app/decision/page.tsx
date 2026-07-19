@@ -1,7 +1,7 @@
 type Race={id:number;race_number:number;race_date:string;scheduled_time:string|null;track:{city:string}};
 type Entry={program_number:number;horse_name:string|null;win_probability?:number|string|null;agf_percent?:number|string|null};
 type Recommendation={race_id:number;race_number:number;city?:string;chaos_index?:number|string|null;confidence?:string;primary:Entry;alternatives:Entry[];reasons:string[];model_version?:string};
-const api='http://127.0.0.1:8042/api/v1';
+const api=process.env.PEGASUS_API_URL ?? 'http://127.0.0.1:8042/api/v1';
 const t={back:'\u2190 Programa d\u00f6n',tag:'G\u00dcNL\u00dcK KARAR PLANI',title:'Kapsam\u0131 netle\u015ftir, riski g\u00f6r.',lead:'Bu ekran, g\u00fcn\u00fcn program\u0131ndaki model adaylar\u0131n\u0131 bir araya getirir. Kesin sonu\u00e7 vaadi de\u011fil, karar deste\u011fi sunar.',empty:'Bug\u00fcn i\u00e7in model \u00f6nerisi hen\u00fcz olu\u015fmad\u0131.',plan:'DENGEL\u0130 KAPSAM',primary:'Birinci aday',alternatives:'Alternatifler',risk:'Risk',why:'Model gerek\u00e7eleri',open:'Kart\u0131 a\u00e7 \u2192',high:'Y\u00fcksek',medium:'Orta',low:'D\u00fc\u015f\u00fck',cards:'kart',race:'ko\u015fu',dot:'\u00b7'};
 async function getJson<T>(path:string,fallback:T):Promise<T>{try{const r=await fetch(`${api}${path}`,{cache:'no-store'});return r.ok?await r.json() as T:fallback}catch{return fallback}}
 function num(value:unknown){const n=typeof value==='number'?value:Number(String(value??'').replace(',','.'));return Number.isFinite(n)?n:null}

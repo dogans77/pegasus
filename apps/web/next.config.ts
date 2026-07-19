@@ -1,18 +1,9 @@
 import type { NextConfig } from "next";
-
+const apiOrigin = process.env.PEGASUS_API_ORIGIN ?? "http://127.0.0.1:8042";
 const nextConfig: NextConfig = {
-  // Local dashboard and API tools use both localhost and 127.0.0.1.
-  // Explicit origins keep development HMR available without weakening public routes.
+  output: "standalone",
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   skipTrailingSlashRedirect: true,
-  async rewrites() {
-    return [
-      {
-        source: "/backend/:path*",
-        destination: "http://127.0.0.1:8000/:path*",
-      },
-    ];
-  },
+  async rewrites() { return [{ source: "/backend/:path*", destination: `${apiOrigin}/:path*` }]; },
 };
-
 export default nextConfig;

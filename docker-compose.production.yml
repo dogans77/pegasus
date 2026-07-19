@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pegasus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-pegasus}
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes: ["redis-data:/data"]
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pegasus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pegasus}
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: ${PUBLIC_WEB_ORIGIN:?Set PUBLIC_WEB_ORIGIN in .env.production}
+    depends_on: [postgres, redis]
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    restart: unless-stopped
+    environment:
+      PEGASUS_API_URL: http://api:8000/api/v1
+      PEGASUS_API_ORIGIN: http://api:8000
+    depends_on: [api]
+    ports: ["${WEB_PORT:-3000}:3000"]
+volumes:
+  postgres-data:
+  redis-data:

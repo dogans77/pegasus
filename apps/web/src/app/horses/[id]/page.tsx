@@ -1,6 +1,6 @@
 type Item={race_id:number;race_date:string;city:string;race_number:number;surface:string;distance_meters:number;program_number:number;handicap_rating:number|null;weight_kg:number|null;finish_position:number|null;won:boolean};
 type Profile={horse:{id:number;name:string;country:string|null;birth_year:number|null;gender:string|null;father:string|null;mother:string|null};summary:{settled_starts:number;wins:number;top3_finishes:number;win_rate:number|null;top3_rate:number|null};history:Item[]};
-const api='http://127.0.0.1:8042/api/v1';
+const api=process.env.PEGASUS_API_URL ?? 'http://127.0.0.1:8042/api/v1';
 const t={back:'\u2190 Programa d\u00f6n',tag:'AT PROF\u0130L\u0130',starts:'Sonu\u00e7lanan start',wins:'Birincilik',top3:'\u0130lk \u00fc\u00e7',rate:'Kazanma oran\u0131',history:'SON YARI\u015e FORMU',empty:'Bu at i\u00e7in ge\u00e7mi\u015f form kayd\u0131 bulunamad\u0131.',finish:'Bitiri\u015f',hp:'Handikap',weight:'Kilo',pedigree:'PED\u0130GR\u0130'};
 function n(v:unknown){const x=Number(v);return Number.isFinite(x)?x:null}
 function clean(v:string|null|undefined){let text=(v??'').replace(/\\u([0-9a-f]{4})/gi,(_,code)=>String.fromCharCode(parseInt(code,16)));for(let i=0;i<4;i+=1){if(!/[\u00c3\u00c2\u00e2]/.test(text))break;try{text=decodeURIComponent(escape(text))}catch{break}}return text}
