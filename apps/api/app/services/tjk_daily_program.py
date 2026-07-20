@@ -26,7 +26,9 @@ class ParsedRace:
 
 
 def fold_text(value: str) -> str:
-    normalized = unicodedata.normalize("NFKD", value.casefold())
+    # Unicode decomposition does not convert Turkish dotless-i by itself.
+    # Canonicalize it explicitly so Elazig and Diyarbakir map correctly.
+    normalized = unicodedata.normalize("NFKD", value.casefold()).replace("\u0131", "i")
     return "".join(character for character in normalized if not unicodedata.combining(character))
 
 
