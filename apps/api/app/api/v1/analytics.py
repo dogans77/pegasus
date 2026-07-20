@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -7,6 +9,8 @@ from app.models.prediction_snapshot import PredictionSnapshot
 from app.models.race import Race
 from app.models.race_entry import RaceEntry
 from app.models.race_result import RaceResult
+from app.models.source_document import SourceDocument
+from app.models.track import Track
 
 router = APIRouter(prefix="/analytics", tags=["Data Quality Lab"])
 
@@ -44,4 +48,39 @@ def model_readiness(db: Session = Depends(get_db)) -> dict:
             "minimum_predicted_races": 100,
         },
         "note": "Baseline ranking is available now. ML training starts after 100 distinct settled races and predictions.",
+    }
+
+@router.get("/daily-program-status")
+def daily_program_status(race_date: date | None = None, db: Session = Depends(get_db)) -> dict:
+    active_date = race_date or db.scalar(select(func.max(Race.race_date)))
+    if active_date is None:
+        return {"ready": False, "race_date": None, "cities": [], "race_count": 0, "source_count": 0, "last_received_at": None}
+
+    city_rows = db.execute(
+        select(Track.name, func.count(Race.id))
+        .join(Race, Race.track_id == Track.id)
+        .where(Race.race_date == active_date)
+        .group_by(Track.name)
+        .order_by(Track.name)
+    ).all()
+    source_count = db.scalar(
+        select(func.count(SourceDocument.id)).where(
+            SourceDocument.race_date == active_date,
+            SourceDocument.document_type == "daily_program_html",
+        )
+    ) or 0
+    last_received_at = db.scalar(
+        select(func.max(SourceDocument.fetched_at)).where(
+            SourceDocument.race_date == active_date,
+            SourceDocument.document_type == "daily_program_html",
+        )
+    )
+    cities = [{"name": name, "race_count": count} for name, count in city_rows]
+    return {
+        "ready": bool(cities and source_count),
+        "race_date": active_date,
+        "cities": cities,
+        "race_count": sum(city["race_count"] for city in cities),
+        "source_count": source_count,
+        "last_received_at": last_received_at,
     }
