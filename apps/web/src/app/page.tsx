@@ -7,7 +7,16 @@ const api=process.env.PEGASUS_API_URL ?? 'http://127.0.0.1:8042/api/v1';
 const t={live:'Canl\u0131 program',waiting:'Veri bekleniyor',todayDesk:'BUG\u00dcN\u00dcN YARI\u015e MASASI',headline:'Net sinyal, sakin karar.',intro:'Bug\u00fcn\u00fcn resmi program\u0131nda',races:'ko\u015fu',horses:'at',ready:'incelenmeye haz\u0131r. Yar\u0131\u015f kart\u0131ndan adaylar\u0131, riski ve piyasa ayr\u0131\u015fmas\u0131n\u0131 birlikte g\u00f6r.',featured:'\u00d6NE \u00c7IKAN KART',probability:'model olas\u0131l\u0131\u011f\u0131',open:'Kart\u0131 a\u00e7 \u2192',active:'Aktif ko\u015fu',entries:'At giri\u015fi',tracks:'Hipodrom',model:'Model kontrol\u00fc',todayCards:'Bug\u00fcn\u00fcn kartlar\u0131',readyText:'Haz\u0131r',daily:'RESM\u0130 G\u00dcNL\u00dcK PROGRAM',where:'Bug\u00fcn hangi hipodromlarda ko\u015fu var?',cards:'kart',empty:'Bug\u00fcn i\u00e7in aktar\u0131lm\u0131\u015f ko\u015fu bulunamad\u0131.',review:'Kart\u0131 incele',modelStatus:'MODEL DURUMU',test:'Zaman ayr\u0131ml\u0131 testte birinci aday isabeti.',result:'Model sonucu',benchmark:'Handikap referans\u0131',guide:'KISA REHBER',cityIstanbul:'\u0130stanbul',cityIzmir:'\u0130zmir',dot:'\u00b7',arrow:'\u2192'};
 async function getJson<T>(path:string,fallback:T):Promise<T>{try{const response=await fetch(`${api}${path}`,{cache:'no-store'});return response.ok?await response.json() as T:fallback}catch{return fallback}}
 function clean(value:string|null|undefined){let text=(value??'').replace(/\\u([0-9a-f]{4})/gi,(_,code)=>String.fromCharCode(parseInt(code,16)));for(let i=0;i<4;i+=1){if(!/[\u00c3\u00c2\u00e2]/.test(text))break;try{text=decodeURIComponent(escape(text))}catch{break}}return text}
-function city(value:string){const name=clean(value);if(name==='Istanbul')return t.cityIstanbul;if(name==='Izmir')return t.cityIzmir;return name}
+function city(value:string){
+ const name=clean(value);
+ const labels:Record<string,string>={
+  Istanbul:t.cityIstanbul,
+  Izmir:t.cityIzmir,
+  Elazig:'Elaz\u0131\u011f',
+  Diyarbakir:'Diyarbak\u0131r'
+ };
+ return labels[name]??name
+}
 const entryKey=(entry:Entry,index:number)=>`${entry.entry_id??entry.id??entry.program_number}-${index}`;
 export const dynamic='force-dynamic';
 export default async function Home(){
