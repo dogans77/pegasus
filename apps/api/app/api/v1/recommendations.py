@@ -114,3 +114,47 @@ def get_daily_recommendations(race_date: date, db: Session = Depends(get_db)) ->
         item["scheduled_time"] = race.scheduled_time.isoformat() if race.scheduled_time else None
         output.append(item)
     return output
+
+@router.get("/shortlist")
+def get_shortlist(
+    race_date: date,
+    max_chaos: float = 65,
+    limit: int = 12,
+    db: Session = Depends(get_db),
+) -> dict:
+    limit = max(1, min(limit, 40))
+    races = list(
+        db.scalars(
+            select(Race)
+            .options(selectinload(Race.track))
+            .where(Race.race_date == race_date)
+            .order_by(Race.scheduled_time, Race.id)
+        )
+    )
+    candidates = []
+    for race in races:
+        try:
+            recommendation = recommendation_for_race(db, race.id)
+        except (LookupError, ValueError):
+            continue
+        probability = float(recommendation["primary"].get("win_probability") or 0)
+        chaos = float(recommendation.get("chaos_index") or 100)
+        if chaos > max_chaos:
+            continue
+        candidates.append({
+            "race_id": race.id,
+            "city": race.track.name,
+            "race_number": race.race_number,
+            "scheduled_time": race.scheduled_time.isoformat() if race.scheduled_time else None,
+            "chaos_index": chaos,
+            "confidence": recommendation.get("confidence"),
+            "primary": recommendation["primary"],
+            "reasons": recommendation.get("reasons", []),
+        })
+    candidates.sort(key=lambda item: (-float(item["primary"].get("win_probability") or 0), item["chaos_index"]))
+    return {
+        "race_date": race_date,
+        "max_chaos": max_chaos,
+        "items": candidates[:limit],
+        "disclaimer": "Shortlist is probability-based decision support, not a guarantee or betting instruction.",
+    }
