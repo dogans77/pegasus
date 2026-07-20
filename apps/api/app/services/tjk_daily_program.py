@@ -1,7 +1,8 @@
-﻿import re
+import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import date, time
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -45,11 +46,61 @@ def best_decoded_html(raw: bytes) -> str:
 
 
 class TjkDailyProgramClient:
-    base_url = "https://www.tjk.org/TR/YarisSever/Info/Sehir/GunlukYarisProgrami"
-    headers = {"User-Agent": "Mozilla/5.0 PegasusAI/0.1", "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8"}
+    city_url = "https://www.tjk.org/TR/YarisSever/Info/Sehir/GunlukYarisProgrami"
+    listing_url = "https://www.tjk.org/TR/YarisSever/Info/Page/GunlukYarisProgrami"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36",
+        "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+    }
+    domestic_cities = {
+        "istanbul": ("Istanbul", "\u0130stanbul"),
+        "izmir": ("Izmir", "\u0130zmir"),
+        "bursa": ("Bursa", "Bursa"),
+        "adana": ("Adana", "Adana"),
+        "ankara": ("Ankara", "Ankara"),
+        "kocaeli": ("Kocaeli", "Kocaeli"),
+        "diyarbakir": ("Diyarbakir", "Diyarbak\u0131r"),
+        "elazig": ("Elazig", "Elaz\u0131\u011f"),
+    }
+
+    def _get(self, url: str) -> bytes:
+        try:
+            response = requests.get(url, headers=self.headers, timeout=45)
+            response.raise_for_status()
+            return response.content
+        except requests.RequestException as exc:
+            raise TjkFetchError(f"TJK daily program could not be fetched: {exc}") from exc
+
+    def discover_city_pages(self, race_date: date) -> list[tuple[str, str, int]]:
+        listing = requests.Request("GET", self.listing_url, params={
+            "QueryParameter_Tarih": race_date.strftime("%d/%m/%Y"),
+            "SehirAdi": "Bursa",
+        }).prepare().url
+        html = best_decoded_html(self._get(listing))
+        discovered: list[tuple[str, str, int]] = []
+        seen: set[str] = set()
+        for anchor in BeautifulSoup(html, "html.parser").select("a[href]"):
+            href = urljoin(listing, anchor.get("href", ""))
+            if "/Sehir/GunlukYarisProgrami" not in href:
+                continue
+            query = parse_qs(urlparse(href).query)
+            requested = query.get("SehirAdi", [""])[0]
+            raw_id = query.get("SehirId", [""])[0]
+            try:
+                city_id = int(raw_id)
+            except (TypeError, ValueError):
+                continue
+            canonical = self.domestic_cities.get(fold_text(requested))
+            if canonical is None or canonical[0] in seen:
+                continue
+            seen.add(canonical[0])
+            discovered.append((canonical[0], canonical[1], city_id))
+        if not discovered:
+            raise TjkParseError("TJK listing did not expose any domestic city program links")
+        return discovered
 
     def build_url(self, *, city: str, city_id: int, race_date: date) -> str:
-        return requests.Request("GET", self.base_url, params={
+        return requests.Request("GET", self.city_url, params={
             "Era": "today",
             "QueryParameter_Tarih": race_date.strftime("%d/%m/%Y"),
             "SehirAdi": city,
@@ -58,12 +109,7 @@ class TjkDailyProgramClient:
 
     def fetch_and_parse(self, *, city: str, city_id: int, race_date: date) -> tuple[str, str, list[ParsedRace]]:
         url = self.build_url(city=city, city_id=city_id, race_date=race_date)
-        try:
-            response = requests.get(url, headers=self.headers, timeout=30)
-            response.raise_for_status()
-        except requests.RequestException as exc:
-            raise TjkFetchError(f"TJK daily program could not be fetched: {exc}") from exc
-        raw_html = best_decoded_html(response.content)
+        raw_html = best_decoded_html(self._get(url))
         races = self._parse_races(raw_html)
         if not races:
             raise TjkParseError("TJK page was downloaded but no race rows could be identified")

@@ -18,15 +18,14 @@ router = APIRouter(prefix="/crawler/tjk", tags=["TJK Discovery"])
 # City IDs used by the official TJK daily-program route. The importer checks
 # each candidate and uses only a page that contains a valid race card.
 CANDIDATE_CITIES = [
-    # TJK city identifiers: Bursa=1, Izmir=2, Istanbul=3.
-    ("Istanbul", 3),
-    ("Izmir", 2),
-    ("Bursa", 1),
-    ("Adana", 4),
-    ("Ankara", 5),
-    ("Kocaeli", 6),
-    ("Diyarbakir", 10),
-    ("Elazig", 11),
+    ("Istanbul", "\u0130stanbul"),
+    ("Izmir", "\u0130zmir"),
+    ("Bursa", "Bursa"),
+    ("Adana", "Adana"),
+    ("Ankara", "Ankara"),
+    ("Kocaeli", "Kocaeli"),
+    ("Diyarbakir", "Diyarbak\u0131r"),
+    ("Elazig", "Elaz\u0131\u011f"),
 ]
 
 
@@ -47,9 +46,17 @@ class AutoImportResponse(BaseModel):
 def discover(race_date: date):
     client = TjkDailyProgramClient()
     found = []
-    for city, city_id in CANDIDATE_CITIES:
+    try:
+        city_pages = client.discover_city_pages(race_date)
+    except (TjkFetchError, TjkParseError):
+        return found
+    for city, request_city, city_id in city_pages:
         try:
-            source_url, raw_html, races = client.fetch_and_parse(city=city, city_id=city_id, race_date=race_date)
+            source_url, raw_html, races = client.fetch_and_parse(
+                city=request_city,
+                city_id=city_id,
+                race_date=race_date,
+            )
             found.append((city, city_id, source_url, raw_html, races))
         except (TjkFetchError, TjkParseError):
             continue
@@ -384,6 +391,19 @@ def import_all_available(race_date: date, db: Session = Depends(get_db)):
                 race.race_class = item.race_class
                 updated += 1
 
+    # Keep the daily board faithful to the official program. If an old
+    # ID-based import attached a card to the wrong city, remove only that
+    # stale card after the canonical city-name import succeeds.
+    active_cities = set(cities)
+    stale_races = list(
+        db.scalars(
+            select(Race)
+            .join(Track)
+            .where(Race.race_date == race_date, ~Track.name.in_(active_cities))
+        )
+    )
+    for stale_race in stale_races:
+        db.delete(stale_race)
     run.status = "completed"
     run.records_processed = created + updated
     run.finished_at = datetime.now(timezone.utc)
