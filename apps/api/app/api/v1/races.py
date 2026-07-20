@@ -54,7 +54,7 @@ def get_race_entries(race_id: int, db: Session = Depends(get_db)) -> list[RaceEn
             "jockey_id": entry.jockey_id,
             "trainer_id": entry.trainer_id,
             "program_number": entry.program_number,
-            "barrier": entry.barrier,
+            "barrier": entry.barrier if entry.barrier and entry.barrier > 0 else None,
             "weight_kg": entry.weight_kg,
             "handicap_rating": entry.handicap_rating,
             "agf_percent": entry.agf_percent,
