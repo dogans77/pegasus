@@ -1,5 +1,7 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -7,6 +9,7 @@ from app.models.prediction_snapshot import PredictionSnapshot
 from app.models.race import Race
 from app.models.race_entry import RaceEntry
 from app.models.race_result import RaceResult
+from app.models.track import Track
 from app.schemas.race_result import RaceResultCreate, RaceResultResponse
 
 router = APIRouter(prefix="/results", tags=["Results and Performance"])
@@ -94,5 +97,50 @@ def performance(db: Session = Depends(get_db)) -> dict:
         "top3_hits": top3_hits,
         "top1_accuracy": round(100 * top1_hits / evaluated, 2) if evaluated else None,
         "top3_coverage": round(100 * top3_hits / evaluated, 2) if evaluated else None,
+        "details": details,
+    }
+
+@router.get("/daily-performance")
+def daily_performance(race_date: date | None = None, db: Session = Depends(get_db)) -> dict:
+    active_date = race_date or db.scalar(select(func.max(Race.race_date)).join(RaceResult, RaceResult.race_id == Race.id))
+    if active_date is None:
+        return {"race_date": None, "evaluated_races": 0, "top1_hits": 0, "top3_hits": 0, "details": []}
+    rows = list(
+        db.execute(
+            select(RaceResult, Race, Track)
+            .join(Race, Race.id == RaceResult.race_id)
+            .join(Track, Track.id == Race.track_id)
+            .where(Race.race_date == active_date)
+            .order_by(Track.name, Race.race_number)
+        ).all()
+    )
+    details = []
+    for result, race, track in rows:
+        snapshot = db.scalar(
+            select(PredictionSnapshot)
+            .where(PredictionSnapshot.race_id == race.id)
+            .order_by(PredictionSnapshot.generated_at.desc())
+        )
+        if snapshot is None or not result.official_order:
+            continue
+        entries = snapshot.payload.get("entries", [])
+        predicted = [entry.get("program_number") for entry in entries]
+        if not predicted:
+            continue
+        winner = result.official_order[0]
+        details.append({
+            "race_id": race.id,
+            "city": track.name,
+            "race_number": race.race_number,
+            "winner_program_number": winner,
+            "predicted_top3": predicted[:3],
+            "top1_hit": predicted[0] == winner,
+            "top3_hit": winner in predicted[:3],
+        })
+    return {
+        "race_date": active_date,
+        "evaluated_races": len(details),
+        "top1_hits": sum(item["top1_hit"] for item in details),
+        "top3_hits": sum(item["top3_hit"] for item in details),
         "details": details,
     }
