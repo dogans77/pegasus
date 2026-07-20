@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.models.prediction_snapshot import PredictionSnapshot
 from app.models.race import Race
 from app.models.race_result import RaceResult
+from app.models.track import Track
 
 router = APIRouter(prefix="/analytics", tags=["Model Monitoring"])
 
@@ -71,4 +72,42 @@ def model_monitor(window: int = 60, db: Session = Depends(get_db)) -> dict:
         "top1_change_points": delta,
         "state": state,
         "note": "Performance is descriptive. It is not a return or profitability guarantee.",
+    }
+
+def _slice(name: str, rows: list[tuple[RaceResult, Race]], db: Session) -> dict:
+    metrics = _period(rows, db)
+    return {
+        "name": name,
+        "evaluated_races": metrics["evaluated_races"],
+        "top1_accuracy": metrics["top1_accuracy"],
+        "top3_coverage": metrics["top3_coverage"],
+    }
+
+
+@router.get("/model-monitor/slices")
+def model_monitor_slices(window: int = 240, db: Session = Depends(get_db)) -> dict:
+    window = max(60, min(window, 500))
+    rows = list(
+        db.execute(
+            select(RaceResult, Race, Track)
+            .join(Race, Race.id == RaceResult.race_id)
+            .join(Track, Track.id == Race.track_id)
+            .order_by(Race.race_date.desc(), Race.id.desc())
+            .limit(window)
+        ).all()
+    )
+    by_city: dict[str, list[tuple[RaceResult, Race]]] = {}
+    by_surface: dict[str, list[tuple[RaceResult, Race]]] = {}
+    for result, race, track in rows:
+        pair = (result, race)
+        by_city.setdefault(track.name, []).append(pair)
+        by_surface.setdefault(race.surface or "Unknown", []).append(pair)
+    city_slices = [_slice(name, values, db) for name, values in by_city.items()]
+    surface_slices = [_slice(name, values, db) for name, values in by_surface.items()]
+    sort_key = lambda item: (item["evaluated_races"], item["top1_accuracy"] or -1)
+    return {
+        "window": window,
+        "by_city": sorted(city_slices, key=sort_key, reverse=True),
+        "by_surface": sorted(surface_slices, key=sort_key, reverse=True),
+        "note": "Slices with a small sample are directional only, not a betting signal.",
     }
