@@ -90,3 +90,8 @@ def daily_program_status(race_date: date | None = None, db: Session = Depends(ge
 def recommendation_outcome_audit(limit: int = 300, db: Session = Depends(get_db)) -> dict:
     from app.services import outcome_audit
     return outcome_audit.report(db, limit=max(1, min(limit, 1000)))
+
+@router.get("/daily-release-readiness")
+def daily_release_readiness(race_date: date | None = None, db: Session = Depends(get_db)) -> dict:
+    from app.services import daily_release
+    return daily_release.report(db, race_date=race_date)
