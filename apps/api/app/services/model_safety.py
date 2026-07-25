@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy.orm import Session
 
 from app.services import model_research
 
 
 MIN_SETTLED_RACES = 500
+# PEGASUS_MODEL_SAFETY_CACHE
+_CACHE: dict | None = None
+_CACHE_UNTIL = None
 MAX_CALIBRATION_GAP_POINTS = 12.0
 
 
@@ -18,7 +23,11 @@ def _calibration_gap(rows: list[dict]) -> float | None:
     return round(max(eligible), 2) if eligible else None
 
 
-def report(db: Session) -> dict:
+def report(db: Session, refresh: bool = False) -> dict:
+    global _CACHE, _CACHE_UNTIL
+    now = datetime.now(timezone.utc)
+    if not refresh and _CACHE is not None and _CACHE_UNTIL is not None and now < _CACHE_UNTIL:
+        return _CACHE
     try:
         research = model_research.temporal_research(db)
     except ValueError as exc:
