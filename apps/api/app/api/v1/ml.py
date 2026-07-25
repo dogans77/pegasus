@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services import baseline_ml
 from app.services import model_research
+from app.services import probability_diagnostics
 
 router = APIRouter(prefix="/ml", tags=["Baseline ML"])
 
@@ -34,5 +35,12 @@ def predict_race(race_id: int, db: Session = Depends(get_db)) -> dict:
 def temporal_model_research(db: Session = Depends(get_db)) -> dict:
     try:
         return model_research.temporal_research(db)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+@router.get("/probability-diagnostics")
+def probability_diagnostic_report(db: Session = Depends(get_db)) -> dict:
+    try:
+        return probability_diagnostics.report(db)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
