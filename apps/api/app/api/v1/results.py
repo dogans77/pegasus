@@ -1,7 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -27,6 +27,43 @@ def serialize(result: RaceResult) -> dict:
     }
 
 
+def prediction_before_result(db: Session, result: RaceResult) -> PredictionSnapshot | None:
+    # A result can only be evaluated against information available before it
+    # was recorded. This prevents post-result refreshes from leaking outcome
+    # information into published performance metrics.
+    return db.scalar(
+        select(PredictionSnapshot)
+        .where(
+            PredictionSnapshot.race_id == result.race_id,
+            PredictionSnapshot.generated_at <= result.recorded_at,
+        )
+        .order_by(desc(PredictionSnapshot.generated_at))
+        .limit(1)
+    )
+
+
+def detail_for(result: RaceResult, race: Race | None, track: Track | None, snapshot: PredictionSnapshot) -> dict | None:
+    if not result.official_order:
+        return None
+    entries = snapshot.payload.get("entries", [])
+    predicted = [entry.get("program_number") for entry in entries if entry.get("program_number") is not None]
+    if not predicted:
+        return None
+    winner = result.official_order[0]
+    return {
+        "race_id": result.race_id,
+        "city": track.name if track else None,
+        "race_number": race.race_number if race else None,
+        "winner_program_number": winner,
+        "predicted_top3": predicted[:3],
+        "top1_hit": predicted[0] == winner,
+        "top3_hit": winner in predicted[:3],
+        "model_version": snapshot.model_version,
+        "prediction_generated_at": snapshot.generated_at,
+        "result_recorded_at": result.recorded_at,
+    }
+
+
 @router.post("/races/{race_id}", response_model=RaceResultResponse, status_code=status.HTTP_201_CREATED)
 def record_result(race_id: int, payload: RaceResultCreate, db: Session = Depends(get_db)) -> dict:
     if not db.get(Race, race_id):
@@ -39,13 +76,7 @@ def record_result(race_id: int, payload: RaceResultCreate, db: Session = Depends
     winner = by_program[payload.official_order[0]]
     result = db.scalar(select(RaceResult).where(RaceResult.race_id == race_id))
     if result is None:
-        result = RaceResult(
-            race_id=race_id,
-            winner_entry_id=winner.id,
-            official_order=payload.official_order,
-            official_time=payload.official_time,
-            source=payload.source,
-        )
+        result = RaceResult(race_id=race_id, winner_entry_id=winner.id, official_order=payload.official_order, official_time=payload.official_time, source=payload.source)
         db.add(result)
     else:
         result.winner_entry_id = winner.id
@@ -65,82 +96,53 @@ def get_result(race_id: int, db: Session = Depends(get_db)) -> dict:
     return serialize(result)
 
 
-@router.get("/performance")
-def performance(db: Session = Depends(get_db)) -> dict:
-    results = list(db.scalars(select(RaceResult)))
-    evaluated = 0
-    top1_hits = 0
-    top3_hits = 0
-    details = []
-    for result in results:
-        snapshot = db.scalar(
-            select(PredictionSnapshot)
-            .where(PredictionSnapshot.race_id == result.race_id)
-            .order_by(PredictionSnapshot.generated_at.desc())
-        )
+def performance_rows(db: Session, race_date: date | None = None) -> tuple[list[dict], int]:
+    statement = select(RaceResult, Race, Track).join(Race, Race.id == RaceResult.race_id).join(Track, Track.id == Race.track_id)
+    if race_date is not None:
+        statement = statement.where(Race.race_date == race_date)
+    rows = list(db.execute(statement.order_by(Race.race_date, Track.name, Race.race_number)).all())
+    details, excluded = [], 0
+    for result, race, track in rows:
+        snapshot = prediction_before_result(db, result)
         if snapshot is None:
+            excluded += 1
             continue
-        entries = snapshot.payload.get("entries", [])
-        if not entries:
+        detail = detail_for(result, race, track, snapshot)
+        if detail is None:
+            excluded += 1
             continue
-        winner = result.official_order[0]
-        predicted = [entry.get("program_number") for entry in entries]
-        evaluated += 1
-        top1 = predicted[0] == winner
-        top3 = winner in predicted[:3]
-        top1_hits += int(top1)
-        top3_hits += int(top3)
-        details.append({"race_id": result.race_id, "winner_program_number": winner, "predicted_top3": predicted[:3], "top1_hit": top1, "top3_hit": top3})
+        details.append(detail)
+    return details, excluded
+
+
+def aggregate(race_date: date | None, details: list[dict], excluded: int) -> dict:
+    evaluated = len(details)
+    top1_hits = sum(item["top1_hit"] for item in details)
+    top3_hits = sum(item["top3_hit"] for item in details)
     return {
+        "race_date": race_date,
         "evaluated_races": evaluated,
+        "eligible_results": evaluated,
+        "excluded_results": excluded,
         "top1_hits": top1_hits,
         "top3_hits": top3_hits,
         "top1_accuracy": round(100 * top1_hits / evaluated, 2) if evaluated else None,
         "top3_coverage": round(100 * top3_hits / evaluated, 2) if evaluated else None,
         "details": details,
+        "evaluation_policy": "Only prediction snapshots generated no later than the official result record are evaluated.",
     }
+
+
+@router.get("/performance")
+def performance(db: Session = Depends(get_db)) -> dict:
+    details, excluded = performance_rows(db)
+    return aggregate(None, details, excluded)
+
 
 @router.get("/daily-performance")
 def daily_performance(race_date: date | None = None, db: Session = Depends(get_db)) -> dict:
     active_date = race_date or db.scalar(select(func.max(Race.race_date)).join(RaceResult, RaceResult.race_id == Race.id))
     if active_date is None:
-        return {"race_date": None, "evaluated_races": 0, "top1_hits": 0, "top3_hits": 0, "details": []}
-    rows = list(
-        db.execute(
-            select(RaceResult, Race, Track)
-            .join(Race, Race.id == RaceResult.race_id)
-            .join(Track, Track.id == Race.track_id)
-            .where(Race.race_date == active_date)
-            .order_by(Track.name, Race.race_number)
-        ).all()
-    )
-    details = []
-    for result, race, track in rows:
-        snapshot = db.scalar(
-            select(PredictionSnapshot)
-            .where(PredictionSnapshot.race_id == race.id)
-            .order_by(PredictionSnapshot.generated_at.desc())
-        )
-        if snapshot is None or not result.official_order:
-            continue
-        entries = snapshot.payload.get("entries", [])
-        predicted = [entry.get("program_number") for entry in entries]
-        if not predicted:
-            continue
-        winner = result.official_order[0]
-        details.append({
-            "race_id": race.id,
-            "city": track.name,
-            "race_number": race.race_number,
-            "winner_program_number": winner,
-            "predicted_top3": predicted[:3],
-            "top1_hit": predicted[0] == winner,
-            "top3_hit": winner in predicted[:3],
-        })
-    return {
-        "race_date": active_date,
-        "evaluated_races": len(details),
-        "top1_hits": sum(item["top1_hit"] for item in details),
-        "top3_hits": sum(item["top3_hit"] for item in details),
-        "details": details,
-    }
+        return aggregate(None, [], 0)
+    details, excluded = performance_rows(db, active_date)
+    return aggregate(active_date, details, excluded)
