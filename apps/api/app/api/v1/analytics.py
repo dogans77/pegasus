@@ -95,3 +95,8 @@ def recommendation_outcome_audit(limit: int = 300, db: Session = Depends(get_db)
 def daily_release_readiness(race_date: date | None = None, db: Session = Depends(get_db)) -> dict:
     from app.services import daily_release
     return daily_release.report(db, race_date=race_date)
+
+@router.get("/daily-model-freshness")
+def daily_model_freshness(race_date: date | None = None, db: Session = Depends(get_db)) -> dict:
+    from app.services import daily_freshness
+    return daily_freshness.report(db, race_date=race_date)
