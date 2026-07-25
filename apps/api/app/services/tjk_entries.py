@@ -1,10 +1,11 @@
 import re
 from decimal import Decimal, InvalidOperation
 from bs4 import BeautifulSoup
+from app.services.text_normalization import repair_text
 
 
 def _clean(value: str) -> str:
-    return " ".join(value.split())
+    return repair_text(" ".join(value.split()))
 
 
 def _decimal(value: str):

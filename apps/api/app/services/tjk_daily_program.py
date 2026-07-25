@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from app.services.text_normalization import repair_text
 
 
 class TjkFetchError(RuntimeError):
@@ -36,7 +37,7 @@ def best_decoded_html(raw: bytes) -> str:
     candidates = []
     for encoding in ("utf-8", "windows-1254", "iso-8859-9"):
         try:
-            value = raw.decode(encoding)
+            value = repair_text(raw.decode(encoding))
             text = BeautifulSoup(value, "html.parser").get_text(" ", strip=True)
             score = len(re.findall(r"\d{1,2}\.\s*kosu\b", fold_text(text)))
             candidates.append((score, value))
