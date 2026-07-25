@@ -1,7 +1,7 @@
 type Race = { id:number; race_number?:number|null; scheduled_time?:string|null; start_time?:string|null; distance_meters?:number|null; surface?:string|null; track?:{name?:string|null}|null; race_date?:string|null };
 type Entry = { id:number; program_number?:number|null; horse_id?:number|null; horse_name?:string|null; jockey_name?:string|null; trainer_name?:string|null; weight_kg?:number|string|null; handicap_rating?:number|string|null; agf_percent?:number|string|null };
 type Candidate = { program_number?:number|null; horse_name?:string|null; win_probability?:number|string|null; strengths?:string[]; risks?:string[] };
-type Explanation = { primary?:Candidate|null; alternatives?:Candidate[]; chaos_index?:number|string|null };
+type Explanation = { primary?:Candidate|null; alternatives?:Candidate[];ranked_entries?:Candidate[]; chaos_index?:number|string|null };
 type ValueItem = { program_number?:number|null; horse_name?:string|null; edge_percentage_points?:number|string|null };
 type Value = { chaos_index?:number|string|null; value_candidates?:ValueItem[] };
 type DailyRecommendation = { race_id?:number|string|null; primary?:Candidate|null; top_entry?:Candidate|null; candidates?:Candidate[]; alternatives?:Candidate[] };
@@ -41,7 +41,7 @@ export default async function Bulletin({searchParams}:{searchParams:Promise<{cit
   ]):[[],null,null,[]];
   const entries=items<Entry>(rawEntries).sort((a,b)=>(a.program_number??999)-(b.program_number??999));
   const daily=items<DailyRecommendation>(rawDaily).find((item)=>Number(item.race_id)===selectedRace?.id)??null;
-  const candidates=[explanation?.primary,...(explanation?.alternatives??[]),daily?.primary,daily?.top_entry,...(daily?.candidates??[]),...(daily?.alternatives??[])].filter(Boolean) as Candidate[];
+  const candidates=[explanation?.primary,...(explanation?.alternatives??[]),daily?.primary,daily?.top_entry,...(daily?.candidates??[]),...(daily?.alternatives??[]),...(((daily as DailyRecommendation & { ranked_entries?: Candidate[] } | null)?.ranked_entries??[]))].filter(Boolean) as Candidate[];
   const candidateFor=(entry:Entry)=>candidates.find((candidate)=>candidate.program_number===entry.program_number)||candidates.find((candidate)=>String(candidate.horse_name??'').trim().toUpperCase()===String(entry.horse_name??'').trim().toUpperCase())||null;
   const lead=explanation?.primary??daily?.primary??daily?.top_entry??candidates[0]??null;
   const valueLead=value?.value_candidates?.[0]??null;

@@ -65,6 +65,7 @@ def recommendation_for_race(db: Session, race_id: int) -> dict:
         "chaos_index": chaos_index,
         "primary": top.__dict__,
         "alternatives": [item.__dict__ for item in entries[1:4]],
+        "ranked_entries": [item.__dict__ for item in entries],
         "reasons": explanation(top, entries, chaos_index),
         "disclaimer": "Olasilik tabanli karar destegidir; kesin sonuc iddiasi tasimaz.",
     }
