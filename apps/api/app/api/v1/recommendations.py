@@ -45,6 +45,8 @@ def recommendation_for_race(db: Session, race_id: int) -> dict:
     if cached is not None:
         return cached
     chaos_index, entries = analyze_race(db, race_id)
+    # PEGASUS_RANKING_INTEGRITY: recommendation order must always follow probability.
+    entries = sorted(entries, key=lambda item: float(item.win_probability or 0), reverse=True)
     model_version = "baseline-rules-v1"
     try:
         model_prediction = baseline_ml.predict_race(db, race_id)
