@@ -123,6 +123,13 @@ def current_day_board(race_date: date | None = None, db: Session = Depends(get_d
         "note": "Current-day board returns only official races for the requested date; it never silently falls back to an older program.",
     }
 
+
+
+@router.get("/model-input-coverage")
+def model_input_coverage(race_date: date | None = None, db: Session = Depends(get_db)) -> dict:
+    from app.services import model_input_coverage
+    return model_input_coverage.report(db, race_date=race_date)
+
 @router.get("/recommendation-outcome-audit")
 def recommendation_outcome_audit(limit: int = 300, db: Session = Depends(get_db)) -> dict:
     from app.services import outcome_audit
