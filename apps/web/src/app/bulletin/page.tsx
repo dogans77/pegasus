@@ -26,10 +26,9 @@ function timeOf(race:Race):string{return valueText(race.scheduled_time??race.sta
 
 export default async function Bulletin({searchParams}:{searchParams:Promise<{city?:string;race?:string}>}){
   const query=await searchParams;
-  const allRaces=items<Race>(await getJson<unknown>('/races/',[]));
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul'}).format(new Date());
-  const todayRaces=allRaces.filter((race)=>String(race.race_date??'').slice(0,10)===today);
-  const cities=Array.from(new Set(todayRaces.map(cityOf).filter((city)=>city!=='--'))).sort((a,b)=>a.localeCompare(b,'tr'));
+  const board=await getJson<{races?:Race[]}>(`/analytics/current-day-board?race_date=${today}`,{races:[]});
+  const todayRaces=items<Race>(board?.races??[]);  const cities=Array.from(new Set(todayRaces.map(cityOf).filter((city)=>city!=='--'))).sort((a,b)=>a.localeCompare(b,'tr'));
   const selectedCity=cities.includes(query.city??'')?String(query.city):cities[0]??'';
   const cityRaces=todayRaces.filter((race)=>cityOf(race)===selectedCity).sort((a,b)=>(a.race_number??999)-(b.race_number??999));
   const selectedRace=cityRaces.find((race)=>race.id===Number(query.race))??cityRaces[0]??null;

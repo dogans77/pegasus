@@ -4,6 +4,7 @@ type Daily={race_id:number;city:string;race_number:number;scheduled_time:string|
 type Health={trained:boolean;deployed_model?:string;candidate_top1_accuracy?:number|null;handicap_benchmark_top1_accuracy?:number|null;decision?:string};
 type Explanation={candidates:{program_number:number;strengths:{label:string;detail:string}[]}[]};
 type SourceStatus={ready:boolean;race_date:string|null;cities:{name:string;race_count:number}[];race_count:number;source_count:number;last_received_at:string|null};
+type CurrentDayBoard={race_date?:string|null;ready?:boolean;source_count?:number;last_received_at?:string|null;cities?:string[];race_count?:number;races?:Race[]};
 const api=process.env.PEGASUS_API_URL ?? 'http://127.0.0.1:8042/api/v1';
 const t={live:'Canl\u0131 program',waiting:'Veri bekleniyor',stale:'G\u00fcncelleme bekliyor',source:'Resmi kaynak',todayDesk:'BUG\u00dcN\u00dcN YARI\u015e MASASI',headline:'Net sinyal, sakin karar.',intro:'Bug\u00fcn\u00fcn resmi program\u0131nda',races:'ko\u015fu',horses:'at',ready:'incelenmeye haz\u0131r. Yar\u0131\u015f kart\u0131ndan adaylar\u0131, riski ve piyasa ayr\u0131\u015fmas\u0131n\u0131 birlikte g\u00f6r.',featured:'\u00d6NE \u00c7IKAN KART',probability:'model olas\u0131l\u0131\u011f\u0131',open:'Kart\u0131 a\u00e7 \u2192',active:'Aktif ko\u015fu',entries:'At giri\u015fi',tracks:'Hipodrom',model:'Model kontrol\u00fc',todayCards:'Bug\u00fcn\u00fcn kartlar\u0131',readyText:'Haz\u0131r',daily:'RESM\u0130 G\u00dcNL\u00dcK PROGRAM',where:'Bug\u00fcn hangi hipodromlarda ko\u015fu var?',cards:'kart',empty:'Bug\u00fcn i\u00e7in aktar\u0131lm\u0131\u015f ko\u015fu bulunamad\u0131.',review:'Kart\u0131 incele',modelStatus:'MODEL DURUMU',test:'Zaman ayr\u0131ml\u0131 testte birinci aday isabeti.',result:'Model sonucu',benchmark:'Handikap referans\u0131',guide:'KISA REHBER',cityIstanbul:'\u0130stanbul',cityIzmir:'\u0130zmir',dot:'\u00b7',arrow:'\u2192'};
 async function getJson<T>(path:string,fallback:T):Promise<T>{try{const response=await fetch(`${api}${path}`,{cache:'no-store'});return response.ok?await response.json() as T:fallback}catch{return fallback}}
@@ -21,14 +22,12 @@ function city(value:string){
 const entryKey=(entry:Entry,index:number)=>`${entry.entry_id??entry.id??entry.program_number}-${index}`;
 export const dynamic='force-dynamic';
 export default async function Home(){
- const [allRaces,health]=await Promise.all([getJson<Race[]>('/races/',[]),getJson<Health>('/decision/model-health',{trained:false})]);
  const localToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul'}).format(new Date());
- const dates=[...new Set(allRaces.map(race=>race.race_date))].sort();
- const activeDate=dates.includes(localToday)?localToday:'';
- const races=allRaces.filter(race=>race.race_date===activeDate).sort((a,b)=>`${a.scheduled_time??''}-${a.track.city}`.localeCompare(`${b.scheduled_time??''}-${b.track.city}`));
- const currentProgramReady=activeDate===localToday&&races.length>0;
- const sourceStatus=activeDate?await getJson<SourceStatus>(`/analytics/daily-program-status?race_date=${activeDate}`,{ready:false,race_date:null,cities:[],race_count:0,source_count:0,last_received_at:null}):{ready:false,race_date:null,cities:[],race_count:0,source_count:0,last_received_at:null};
- const cards=await Promise.all(races.map(async race=>({...race,entries:await getJson<Entry[]>(`/races/${race.id}/entries`,[])})));
+ const [board,health]=await Promise.all([getJson<CurrentDayBoard>(`/analytics/current-day-board?race_date=${localToday}`,{race_date:null,ready:false,races:[],source_count:0,cities:[]}),getJson<Health>('/decision/model-health',{trained:false})]);
+ const activeDate=String(board.race_date??'');
+ const races=(board.races??[]).sort((a,b)=>`${a.scheduled_time??''}-${a.track.city}`.localeCompare(`${b.scheduled_time??''}-${b.track.city}`));
+ const currentProgramReady=Boolean(board.ready)&&activeDate===localToday&&races.length>0;
+ const sourceStatus:SourceStatus={ready:Boolean(board.ready),race_date:board.race_date??null,cities:(board.cities??[]).map(name=>({name,race_count:0})),race_count:Number(board.race_count??races.length),source_count:Number(board.source_count??0),last_received_at:board.last_received_at??null}; const cards=await Promise.all(races.map(async race=>({...race,entries:await getJson<Entry[]>(`/races/${race.id}/entries`,[])})));
  const daily=activeDate?await getJson<Daily[]>(`/races/daily-intelligence?race_date=${activeDate}`,[]):[];
  const dailyByRace=new Map(daily.map(item=>[item.race_id,item]));
  const featured=daily[0];

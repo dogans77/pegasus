@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.models.prediction_snapshot import PredictionSnapshot
@@ -85,6 +85,43 @@ def daily_program_status(race_date: date | None = None, db: Session = Depends(ge
         "last_received_at": last_received_at,
     }
 
+
+
+
+@router.get("/current-day-board")
+def current_day_board(race_date: date | None = None, db: Session = Depends(get_db)) -> dict:
+    active_date = race_date or datetime.now().date()
+    races = list(
+        db.scalars(
+            select(Race)
+            .options(selectinload(Race.track))
+            .where(Race.race_date == active_date)
+            .order_by(Race.scheduled_time, Race.id)
+        )
+    )
+    source_count = db.scalar(
+        select(func.count(SourceDocument.id)).where(
+            SourceDocument.race_date == active_date,
+            SourceDocument.document_type == "daily_program_html",
+        )
+    ) or 0
+    last_received_at = db.scalar(
+        select(func.max(SourceDocument.fetched_at)).where(
+            SourceDocument.race_date == active_date,
+            SourceDocument.document_type == "daily_program_html",
+        )
+    )
+    cities = sorted({race.track.city for race in races if race.track and race.track.city})
+    return {
+        "race_date": active_date,
+        "ready": bool(races and source_count),
+        "source_count": source_count,
+        "last_received_at": last_received_at,
+        "cities": cities,
+        "race_count": len(races),
+        "races": races,
+        "note": "Current-day board returns only official races for the requested date; it never silently falls back to an older program.",
+    }
 
 @router.get("/recommendation-outcome-audit")
 def recommendation_outcome_audit(limit: int = 300, db: Session = Depends(get_db)) -> dict:
