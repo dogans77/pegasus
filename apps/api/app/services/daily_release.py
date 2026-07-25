@@ -9,8 +9,7 @@ from app.api.v1.recommendations import recommendation_for_race
 
 
 def _probability(value) -> float:
-    number = float(value or 0)
-    return number / 100.0 if number > 1.0 else number
+    return float(value or 0) / 100.0
 
 
 def report(db: Session, race_date: date | None = None) -> dict:

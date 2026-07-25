@@ -9,8 +9,7 @@ from app.models.race_result import RaceResult
 
 
 def _probability(value) -> float:
-    number = float(value or 0)
-    return number / 100.0 if number > 1 else number
+    return float(value or 0) / 100.0
 
 
 def report(db: Session, limit: int = 300) -> dict:
