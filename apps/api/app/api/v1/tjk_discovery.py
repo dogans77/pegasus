@@ -316,11 +316,13 @@ def import_results(race_date: date, db: Session = Depends(get_db)):
             entries = list(db.scalars(select(RaceEntry).options(selectinload(RaceEntry.horse)).where(RaceEntry.race_id == race.id)))
             by_program = {entry.program_number: entry for entry in entries}
             by_horse = {_result_horse_key(entry.horse.name): entry for entry in entries if entry.horse is not None}
-            known_order = []
-            for finisher_name in parsed.finisher_names:
-                entry = by_horse.get(_result_horse_key(finisher_name))
-                if entry is not None and entry.program_number not in known_order:
-                    known_order.append(entry.program_number)
+            known_order = [number for number in parsed.finisher_program_numbers if number in by_program]
+            if len(known_order) < 2:
+                known_order = []
+                for finisher_name in parsed.finisher_names:
+                    entry = by_horse.get(_result_horse_key(finisher_name))
+                    if entry is not None and entry.program_number not in known_order:
+                        known_order.append(entry.program_number)
             if not known_order:
                 skipped += 1
                 continue

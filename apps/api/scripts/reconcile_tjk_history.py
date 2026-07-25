@@ -1,10 +1,7 @@
 import argparse
 import json
-import re
 import time
-from collections import defaultdict
 from datetime import datetime
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -18,15 +15,11 @@ from app.models.track import Track
 from app.services.tjk_results import TjkResultsClient
 
 RESULT_CITIES = [
-    ("Istanbul", "Istanbul", 1), ("Izmir", "Izmir", 2), ("Bursa", "Bursa", 3),
-    ("Adana", "Adana", 4), ("Ankara", "Ankara", 5), ("Kocaeli", "Kocaeli", 6),
-    ("Diyarbakir", "Diyarbakir", 10), ("Elazig", "Elazig", 11),
+    ("Istanbul", chr(0x0130) + "stanbul", 1), ("Izmir", chr(0x0130) + "zmir", 2),
+    ("Bursa", "Bursa", 3), ("Adana", "Adana", 4), ("Ankara", "Ankara", 5),
+    ("Kocaeli", "Kocaeli", 6), ("Diyarbakir", "Diyarbak" + chr(0x0131) + "r", 10),
+    ("Elazig", "Elaz" + chr(0x0131) + chr(0x011f), 11),
 ]
-
-
-def key(value):
-    table = str.maketrans({"I": "I", "i": "I", "S": "S", "s": "S", "G": "G", "g": "G", "U": "U", "u": "U", "O": "O", "o": "O", "C": "C", "c": "C"})
-    return re.sub(r"[^A-Z0-9]", "", (value or "").upper().translate(table))
 
 
 def suspicious(order):
@@ -34,37 +27,16 @@ def suspicious(order):
     return len(values) >= 4 and values == list(range(1, len(values) + 1))
 
 
-def best_entry(finisher, entries):
-    wanted = key(finisher)
-    exact = [entry for entry in entries if entry.horse and key(entry.horse.name) == wanted]
-    if len(exact) == 1:
-        return exact[0]
-    scored = []
-    for entry in entries:
-        if not entry.horse:
-            continue
-        score = SequenceMatcher(None, wanted, key(entry.horse.name)).ratio()
-        scored.append((score, entry))
-    scored.sort(key=lambda item: item[0], reverse=True)
-    if len(scored) == 1 and scored[0][0] >= 0.91:
-        return scored[0][1]
-    if len(scored) >= 2 and scored[0][0] >= 0.91 and scored[0][0] - scored[1][0] >= 0.04:
-        return scored[0][1]
-    return None
-
-
-def checkpoint_load(path):
-    if not path.exists():
-        return {"completed_dates": []}
+def load_checkpoint(path):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"completed_dates": []}
     except Exception:
         return {"completed_dates": []}
 
 
-def checkpoint_save(path, payload):
+def save_checkpoint(path, state):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(state, ensure_ascii=True, indent=2), encoding="utf-8")
 
 
 def main():
@@ -73,83 +45,64 @@ def main():
     parser.add_argument("--checkpoint", default="deploy/reports/tjk-result-reconciliation-checkpoint.json")
     args = parser.parse_args()
     checkpoint_path = Path(args.checkpoint)
-    state = checkpoint_load(checkpoint_path)
+    state = load_checkpoint(checkpoint_path)
     completed = set(state.get("completed_dates", []))
     db = SessionLocal()
-    summary = defaultdict(int)
+    summary = {"marked_suspect": 0, "reconciled_races": 0, "unmatched_races": 0, "dates_completed": 0}
     try:
-        suspect_results = list(db.scalars(select(RaceResult).where(RaceResult.source.in_(["tjk", "tjk_needs_reconciliation"]))).all())
-        for result in suspect_results:
+        for result in db.scalars(select(RaceResult).where(RaceResult.source.in_(["tjk", "tjk_needs_reconciliation"]))).all():
             if suspicious(result.official_order):
                 result.source = "tjk_needs_reconciliation"
                 summary["marked_suspect"] += 1
         db.commit()
-
         dates = list(db.scalars(
-            select(Race.race_date)
-            .join(RaceResult, RaceResult.race_id == Race.id)
-            .where(RaceResult.source == "tjk_needs_reconciliation")
-            .distinct()
-            .order_by(Race.race_date)
+            select(Race.race_date).join(RaceResult, RaceResult.race_id == Race.id)
+            .where(RaceResult.source == "tjk_needs_reconciliation").distinct().order_by(Race.race_date)
         ).all())
-        dates = [item for item in dates if item.isoformat() not in completed]
+        dates = [value for value in dates if value.isoformat() not in completed]
         if args.max_dates > 0:
             dates = dates[:args.max_dates]
-
         client = TjkResultsClient()
         for race_date in dates:
-            date_key = race_date.isoformat()
-            day = defaultdict(int)
+            day = {"reconciled_races": 0, "unmatched_races": 0, "pages": 0}
             for stored_city, request_city, city_id in RESULT_CITIES:
                 try:
                     _, _, parsed_races = client.fetch_and_parse(city=request_city, city_id=city_id, race_date=race_date)
                 except Exception:
-                    day["unavailable_city_pages"] += 1
                     continue
+                day["pages"] += 1
                 for parsed in parsed_races:
-                    race = db.scalar(
-                        select(Race)
-                        .join(Race.track)
-                        .where(Race.race_date == race_date, Race.race_number == parsed.race_number, Track.name == stored_city)
-                    )
+                    race = db.scalar(select(Race).join(Race.track).where(
+                        Race.race_date == race_date, Race.race_number == parsed.race_number, Track.name == stored_city
+                    ))
                     if race is None:
                         continue
                     result = db.scalar(select(RaceResult).where(RaceResult.race_id == race.id))
                     if result is None or result.source != "tjk_needs_reconciliation":
                         continue
-                    entries = list(db.scalars(
-                        select(RaceEntry)
-                        .options(selectinload(RaceEntry.horse))
-                        .where(RaceEntry.race_id == race.id)
-                    ))
-                    order = []
-                    for finisher in parsed.finisher_names:
-                        entry = best_entry(finisher, entries)
-                        if entry is not None and entry.program_number not in order:
-                            order.append(entry.program_number)
+                    entries = list(db.scalars(select(RaceEntry).options(selectinload(RaceEntry.horse)).where(RaceEntry.race_id == race.id)))
+                    by_program = {entry.program_number: entry for entry in entries}
+                    order = [number for number in parsed.finisher_program_numbers if number in by_program]
                     if len(order) < 2:
                         day["unmatched_races"] += 1
                         continue
-                    winner = next((entry for entry in entries if entry.program_number == order[0]), None)
-                    if winner is None:
-                        day["unmatched_races"] += 1
-                        continue
-                    result.winner_entry_id = winner.id
+                    result.winner_entry_id = by_program[order[0]].id
                     result.official_order = order
                     result.official_time = parsed.official_time
                     result.source = "tjk_reconciled"
                     day["reconciled_races"] += 1
             db.commit()
-            completed.add(date_key)
+            completed.add(race_date.isoformat())
             state["completed_dates"] = sorted(completed)
             state["last_completed_at"] = datetime.utcnow().isoformat() + "Z"
-            checkpoint_save(checkpoint_path, state)
-            summary.update(day)
+            save_checkpoint(checkpoint_path, state)
+            for key, value in day.items():
+                summary[key] = summary.get(key, 0) + value
             summary["dates_completed"] += 1
-            print(json.dumps({"date": date_key, **dict(day), "remaining_dates": len(dates) - summary["dates_completed"]}, ensure_ascii=True))
-            time.sleep(0.35)
+            print(json.dumps({"date": race_date.isoformat(), **day, "remaining_dates": len(dates) - summary["dates_completed"]}, ensure_ascii=True))
+            time.sleep(0.25)
         summary["remaining_suspect_results"] = int(db.scalar(select(func.count()).select_from(RaceResult).where(RaceResult.source == "tjk_needs_reconciliation")) or 0)
-        print(json.dumps({"completed": dict(summary), "checkpoint": str(checkpoint_path)}, ensure_ascii=True))
+        print(json.dumps({"completed": summary, "checkpoint": str(checkpoint_path)}, ensure_ascii=True))
     finally:
         db.close()
 
