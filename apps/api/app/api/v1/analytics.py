@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -52,7 +52,7 @@ def model_readiness(db: Session = Depends(get_db)) -> dict:
 
 @router.get("/daily-program-status")
 def daily_program_status(race_date: date | None = None, db: Session = Depends(get_db)) -> dict:
-    active_date = race_date or db.scalar(select(func.max(Race.race_date)))
+    active_date = race_date or datetime.now().date()
     if active_date is None:
         return {"ready": False, "race_date": None, "cities": [], "race_count": 0, "source_count": 0, "last_received_at": None}
 
