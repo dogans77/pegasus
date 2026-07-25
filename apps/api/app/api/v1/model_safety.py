@@ -8,5 +8,5 @@ router = APIRouter(prefix="/analytics", tags=["Model Safety"])
 
 
 @router.get("/model-safety")
-def model_safety_report(db: Session = Depends(get_db)) -> dict:
-    return model_safety.report(db)
+def model_safety_report(refresh: bool = False, db: Session = Depends(get_db)) -> dict:
+    return model_safety.report(db, refresh=refresh)
