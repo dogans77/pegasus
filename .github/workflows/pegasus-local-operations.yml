@@ -1,0 +1,38 @@
+name: Pegasus Local Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Operation to run on the Pegasus computer
+        required: true
+        default: health
+        type: choice
+        options:
+          - health
+          - daily-refresh
+          - reconcile-results
+          - model-report
+
+permissions:
+  contents: read
+
+jobs:
+  operate:
+    runs-on: [self-hosted, windows, pegasus]
+    timeout-minutes: 720
+    steps:
+      - name: Update local repository
+        shell: powershell
+        run: |
+          Set-Location 'C:\Projects\pegasus'
+          git fetch origin
+          git switch feature/sprint-02
+          git pull --ff-only origin feature/sprint-02
+      - name: Run requested Pegasus operation
+        shell: powershell
+        env:
+          PEGASUS_OPERATION: ${{ inputs.operation }}
+        run: |
+          Set-Location 'C:\Projects\pegasus'
+          .\ops\local\run-pegasus-operation.ps1 -Operation $env:PEGASUS_OPERATION
