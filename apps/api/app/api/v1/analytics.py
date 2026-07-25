@@ -84,3 +84,9 @@ def daily_program_status(race_date: date | None = None, db: Session = Depends(ge
         "source_count": source_count,
         "last_received_at": last_received_at,
     }
+
+
+@router.get("/recommendation-outcome-audit")
+def recommendation_outcome_audit(limit: int = 300, db: Session = Depends(get_db)) -> dict:
+    from app.services import outcome_audit
+    return outcome_audit.report(db, limit=max(1, min(limit, 1000)))
