@@ -70,3 +70,49 @@ def report(db: Session) -> dict:
         "candidate_improves_brier": best["brier_score"] < raw["brier_score"],
         "note": "Research only. The candidate calibration is not deployed automatically.",
     }
+
+def promotion_report(db: Session) -> dict:
+    """Choose calibration only on a tune window, then evaluate it on unseen dates."""
+    frame = baseline_ml.training_frame(db)
+    dates = sorted(frame["race_date"].unique()) if not frame.empty else []
+    if len(dates) < 45:
+        raise ValueError("At least 45 race dates are required for calibration promotion testing.")
+    train_end = max(1, int(len(dates) * .65))
+    tune_end = max(train_end + 1, int(len(dates) * .80))
+    train_dates = set(dates[:train_end])
+    tune_dates = set(dates[train_end:tune_end])
+    holdout_dates = set(dates[tune_end:])
+    train = frame[frame["race_date"].isin(train_dates)].copy()
+    tune = frame[frame["race_date"].isin(tune_dates)].copy()
+    holdout = frame[frame["race_date"].isin(holdout_dates)].copy()
+    if train.empty or tune.empty or holdout.empty:
+        raise ValueError("Calibration promotion temporal partitions are incomplete.")
+    pipeline = baseline_ml._pipeline()
+    pipeline.fit(train[baseline_ml.FEATURES], train["winner"])
+    tune_scored = _normalize(tune, pipeline.predict_proba(tune[baseline_ml.FEATURES])[:, 1])
+    tune_scored["uniform"] = 1.0 / tune_scored["field_size"]
+    tuning = []
+    for alpha in np.arange(0.0, .61, .05):
+        column = f"tune_{alpha:.2f}"
+        tune_scored[column] = (1.0 - alpha) * tune_scored["probability"] + alpha * tune_scored["uniform"]
+        tuning.append((float(alpha), _brier(tune_scored, column)))
+    selected_alpha = min(tuning, key=lambda item: item[1])[0]
+    holdout_scored = _normalize(holdout, pipeline.predict_proba(holdout[baseline_ml.FEATURES])[:, 1])
+    holdout_scored["uniform"] = 1.0 / holdout_scored["field_size"]
+    holdout_scored["candidate"] = (1.0 - selected_alpha) * holdout_scored["probability"] + selected_alpha * holdout_scored["uniform"]
+    raw_brier = _brier(holdout_scored, "probability")
+    candidate_brier = _brier(holdout_scored, "candidate")
+    raw_top1 = _top1(holdout_scored, "probability")
+    candidate_top1 = _top1(holdout_scored, "candidate")
+    eligible = candidate_brier < raw_brier and candidate_top1 >= raw_top1 - .005
+    return {
+        "selected_shrinkage": round(selected_alpha, 2),
+        "tune_races": int(tune["race_id"].nunique()),
+        "holdout_races": int(holdout["race_id"].nunique()),
+        "raw_holdout_brier": raw_brier,
+        "candidate_holdout_brier": candidate_brier,
+        "raw_holdout_top1": raw_top1,
+        "candidate_holdout_top1": candidate_top1,
+        "eligible_for_manual_promotion": eligible,
+        "note": "Eligible means only that the candidate passed this holdout gate. It is not deployed automatically.",
+    }

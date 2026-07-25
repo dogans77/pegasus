@@ -44,3 +44,10 @@ def probability_diagnostic_report(db: Session = Depends(get_db)) -> dict:
         return probability_diagnostics.report(db)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+@router.get("/calibration-promotion")
+def calibration_promotion_report(db: Session = Depends(get_db)) -> dict:
+    try:
+        return probability_diagnostics.promotion_report(db)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
