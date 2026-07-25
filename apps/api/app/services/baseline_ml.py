@@ -38,6 +38,34 @@ FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 ARTIFACT_DIR = Path(__file__).resolve().parent.parent / "ml" / "artifacts"
 MODEL_PATH = ARTIFACT_DIR / "field_relative_logistic_v5.joblib"
 METADATA_PATH = ARTIFACT_DIR / "field_relative_logistic_v5.json"
+_ARTIFACT_CACHE = None
+_PREDICTION_HISTORY_CACHE: dict = {}
+
+
+def clear_prediction_cache() -> None:
+    """Clear derived prediction state after a data import or model retrain."""
+    global _ARTIFACT_CACHE
+    _ARTIFACT_CACHE = None
+    _PREDICTION_HISTORY_CACHE.clear()
+
+
+def _load_artifact() -> dict:
+    global _ARTIFACT_CACHE
+    if _ARTIFACT_CACHE is None:
+        _ARTIFACT_CACHE = joblib.load(MODEL_PATH)
+    return _ARTIFACT_CACHE
+
+
+def _prediction_history_before(db: Session, before_date):
+    cached = _PREDICTION_HISTORY_CACHE.get(before_date)
+    if cached is not None:
+        return cached
+    horses, jockeys, trainers, pairs = (defaultdict(_empty_state) for _ in range(4))
+    for prior_race, result, prior_entries in _settled_groups(db, before_date=before_date):
+        _apply_race_to_history(prior_race, result, prior_entries, horses, jockeys, trainers, pairs)
+    state = (horses, jockeys, trainers, pairs)
+    _PREDICTION_HISTORY_CACHE[before_date] = state
+    return state
 
 
 def _empty_state() -> dict:
@@ -271,6 +299,7 @@ def train(db: Session) -> dict:
     metadata = {"model_version": MODEL_VERSION, "trained_at": datetime.now(timezone.utc).isoformat(), "settled_races": settled_races, "training_entries": int(len(train_frame)), "test_entries": int(len(test_frame)), "feature_names": FEATURES, "metrics": metrics, "benchmarks": benchmarks, "deployment": deployment, "note": "Temporal horse-form model. Probabilities are decision support, not guarantees."}
     joblib.dump({"pipeline": pipeline, "metadata": metadata}, MODEL_PATH)
     METADATA_PATH.write_text(json.dumps(metadata, ensure_ascii=True, indent=2), encoding="utf-8")
+    clear_prediction_cache()
     return metadata
 
 
@@ -289,11 +318,10 @@ def predict_race(db: Session, race_id: int) -> dict:
     entries = list(db.scalars(select(RaceEntry).where(RaceEntry.race_id == race_id).order_by(RaceEntry.program_number)))
     if len(entries) < 2:
         raise ValueError("At least two entries are required for prediction.")
-    horses, jockeys, trainers, pairs = (defaultdict(_empty_state) for _ in range(4))
-    for prior_race, result, prior_entries in _settled_groups(db, before_date=race.race_date):
-        _apply_race_to_history(prior_race, result, prior_entries, horses, jockeys, trainers, pairs)
+    horses, jockeys, trainers, pairs = _prediction_history_before(db, race.race_date)
+
     rows = _add_field_relative_features([_entry_row(entry, race, len(entries), horses[entry.horse_id], jockeys[entry.jockey_id], trainers[entry.trainer_id], pairs[(entry.jockey_id, entry.trainer_id)]) for entry in entries])
-    artifact = joblib.load(MODEL_PATH)
+    artifact = _load_artifact()
     deployment = artifact["metadata"].get("deployment", {"selected_model": MODEL_VERSION})
     selected_model = deployment.get("selected_model", MODEL_VERSION)
     if selected_model == "handicap-leader-v1":

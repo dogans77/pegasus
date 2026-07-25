@@ -98,6 +98,7 @@ def warm_daily_recommendations(race_date: date, db: Session = Depends(get_db)) -
 @router.post("/cache/clear")
 def clear_recommendation_cache() -> dict:
     _PEGASUS_RECOMMENDATION_CACHE.clear()
+    baseline_ml.clear_prediction_cache()
     return {"cleared": True}
 
 @router.get("/daily")
