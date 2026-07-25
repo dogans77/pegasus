@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.models.prediction_snapshot import PredictionSnapshot
 from app.models.race import Race
 from app.services.race_intelligence import analyze_race
+from app.services import baseline_ml
 
 router = APIRouter(prefix="/prediction-audit", tags=["Prediction Audit"])
 MODEL_VERSION = "baseline-hp-agf-weight-v1"
@@ -21,16 +22,29 @@ def build_snapshot(db: Session, race_id: int) -> PredictionSnapshot:
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    payload = {"entries": [entry.__dict__ for entry in entries]}
+    model_version = MODEL_VERSION
+    payload = {"entries": [entry.__dict__ for entry in entries], "source": "baseline_rules"}
+    try:
+        prediction = baseline_ml.predict_race(db, race_id)
+        model_version = prediction["model_version"]
+        payload = {
+            "entries": prediction["entries"],
+            "deployment": prediction.get("deployment"),
+            "source": "deployed_model",
+        }
+    except (LookupError, ValueError):
+        # The transparent rules model remains a valid fallback before the
+        # trained artifact exists or for an incomplete race card.
+        pass
     snapshot = db.scalar(
         select(PredictionSnapshot)
-        .where(PredictionSnapshot.race_id == race_id, PredictionSnapshot.model_version == MODEL_VERSION)
+        .where(PredictionSnapshot.race_id == race_id, PredictionSnapshot.model_version == model_version)
         .order_by(PredictionSnapshot.generated_at.desc())
     )
     if snapshot is None:
         snapshot = PredictionSnapshot(
             race_id=race_id,
-            model_version=MODEL_VERSION,
+            model_version=model_version,
             chaos_index=chaos_index,
             payload=payload,
         )
