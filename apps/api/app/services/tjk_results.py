@@ -11,7 +11,7 @@ from app.services.tjk_daily_program import TjkFetchError, best_decoded_html
 @dataclass(frozen=True)
 class ParsedResultRace:
     race_number: int
-    official_order: list[int]
+    finisher_names: list[str]
     official_time: str | None
 
 
@@ -37,36 +37,34 @@ class TjkResultsClient:
         raw_html = best_decoded_html(response.content)
         return url, raw_html, self._parse_result_tables(raw_html)
 
-    @staticmethod
-    def _program_number(cell_text: str) -> int | None:
-        match = re.search(r"\b(\d{1,2})\b", cell_text)
-        return int(match.group(1)) if match else None
-
     @classmethod
     def _parse_result_tables(cls, html: str) -> list[ParsedResultRace]:
         soup = BeautifulSoup(html, "html.parser")
         parsed: list[ParsedResultRace] = []
         for table in soup.find_all("table"):
-            order: list[int] = []
+            finisher_names: list[str] = []
             official_time = None
             for row in table.find_all("tr"):
                 cells = row.find_all(["td", "th"], recursive=False)
                 if len(cells) < 14:
                     continue
-                program_number = cls._program_number(cells[1].get_text(" ", strip=True))
+                # The TJK results table places finish position in the numeric
+                # column that was previously interpreted as a horse number.
+                # Preserve table order, then map the horse name to the official
+                # program card in the importer.
                 horse_name = cells[2].get_text(" ", strip=True)
-                if program_number is None or len(horse_name) < 2:
+                if len(horse_name) < 2:
                     continue
-                if program_number not in order:
-                    order.append(program_number)
+                if horse_name not in finisher_names:
+                    finisher_names.append(horse_name)
                 if official_time is None:
                     value = cells[9].get_text(" ", strip=True)
                     time_match = re.search(r"\b\d{1,2}\.\d{2}\.\d{2}\b", value)
                     official_time = time_match.group(0) if time_match else None
-            if order:
+            if len(finisher_names) >= 2:
                 parsed.append(ParsedResultRace(
                     race_number=len(parsed) + 1,
-                    official_order=order,
+                    finisher_names=finisher_names,
                     official_time=official_time,
                 ))
         return parsed

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
+from app.models.race_result import RaceResult
 
 from app.services import model_research
 
@@ -52,11 +55,17 @@ def report(db: Session, refresh: bool = False) -> dict:
     elif gap > MAX_CALIBRATION_GAP_POINTS:
         reasons.append("Probability calibration gap exceeds the guardrail")
 
+    unreconciled_official_results = db.scalar(
+        select(func.count(RaceResult.id)).where(RaceResult.source == "tjk_needs_reconciliation")
+    ) or 0
+    if unreconciled_official_results:
+        reasons.append("Official result reconciliation is incomplete")
     state = "experimental" if not reasons else "review"
     return {
         "state": state,
         "can_publish_actionable_scenarios": False,
         "settled_races": settled,
+        "unreconciled_official_results": unreconciled_official_results,
         "minimum_settled_races": MIN_SETTLED_RACES,
         "average_model_top1_accuracy": model_top1,
         "average_handicap_top1_accuracy": handicap_top1,

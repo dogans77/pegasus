@@ -168,6 +168,7 @@ def _settled_groups(db: Session, before_date=None) -> list[tuple[Race, RaceResul
         select(Race, RaceResult, RaceEntry)
         .join(RaceResult, RaceResult.race_id == Race.id)
         .join(RaceEntry, RaceEntry.race_id == Race.id)
+        .where(RaceResult.source != "tjk_needs_reconciliation")
         .order_by(Race.race_date, Race.race_number, Race.id, RaceEntry.program_number)
     )
     if before_date is not None:

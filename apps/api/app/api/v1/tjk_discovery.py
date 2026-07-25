@@ -1,10 +1,11 @@
 from datetime import date, datetime, timezone
+import re
 import hashlib
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.models.crawler_run import CrawlerRun
@@ -247,6 +248,10 @@ RESULT_CITIES = [
     ("Diyarbakir", "Diyarbak\u0131r", 10),
     ("Elazig", "Elaz\u0131\u011f", 11),
 ]
+def _result_horse_key(value: str | None) -> str:
+    text = (value or "").upper().translate(str.maketrans({"I": "I", "\u0130": "I", "\u0131": "I", "\u015e": "S", "\u011e": "G", "\u00dc": "U", "\u00d6": "O", "\u00c7": "C"}))
+    return re.sub(r"[^A-Z0-9]", "", text)
+
 def _result_candidates(race_date: date):
     client = TjkResultsClient()
     output = []
@@ -308,9 +313,14 @@ def import_results(race_date: date, db: Session = Depends(get_db)):
             if race is None:
                 skipped += 1
                 continue
-            entries = list(db.scalars(select(RaceEntry).where(RaceEntry.race_id == race.id)))
+            entries = list(db.scalars(select(RaceEntry).options(selectinload(RaceEntry.horse)).where(RaceEntry.race_id == race.id)))
             by_program = {entry.program_number: entry for entry in entries}
-            known_order = [number for number in parsed.official_order if number in by_program]
+            by_horse = {_result_horse_key(entry.horse.name): entry for entry in entries if entry.horse is not None}
+            known_order = []
+            for finisher_name in parsed.finisher_names:
+                entry = by_horse.get(_result_horse_key(finisher_name))
+                if entry is not None and entry.program_number not in known_order:
+                    known_order.append(entry.program_number)
             if not known_order:
                 skipped += 1
                 continue

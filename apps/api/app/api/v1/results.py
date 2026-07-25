@@ -103,6 +103,9 @@ def performance_rows(db: Session, race_date: date | None = None) -> tuple[list[d
     rows = list(db.execute(statement.order_by(Race.race_date, Track.name, Race.race_number)).all())
     details, excluded = [], 0
     for result, race, track in rows:
+        if result.source == "tjk_needs_reconciliation":
+            excluded += 1
+            continue
         snapshot = prediction_before_result(db, result)
         if snapshot is None:
             excluded += 1
