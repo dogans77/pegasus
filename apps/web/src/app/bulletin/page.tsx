@@ -4,7 +4,7 @@ type Candidate = { program_number?:number|null; horse_name?:string|null; win_pro
 type Explanation = { primary?:Candidate|null; alternatives?:Candidate[];ranked_entries?:Candidate[]; chaos_index?:number|string|null };
 type ValueItem = { program_number?:number|null; horse_name?:string|null; edge_percentage_points?:number|string|null };
 type Value = { chaos_index?:number|string|null; value_candidates?:ValueItem[] };
-type DailyRecommendation = { race_id?:number|string|null; primary?:Candidate|null; top_entry?:Candidate|null; candidates?:Candidate[]; alternatives?:Candidate[] };
+type DailyRecommendation = { race_id?:number|string|null; primary?:Candidate|null; top_entry?:Candidate|null; candidates?:Candidate[]; alternatives?:Candidate[]; ranked_entries?:Candidate[] };
 
 export const dynamic = 'force-dynamic';
 const api = process.env.PEGASUS_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8042/api/v1';
@@ -41,9 +41,10 @@ export default async function Bulletin({searchParams}:{searchParams:Promise<{cit
   ]):[[],null,null,[]];
   const entries=items<Entry>(rawEntries).sort((a,b)=>(a.program_number??999)-(b.program_number??999));
   const daily=items<DailyRecommendation>(rawDaily).find((item)=>Number(item.race_id)===selectedRace?.id)??null;
-  const candidates=[explanation?.primary,...(explanation?.alternatives??[]),daily?.primary,daily?.top_entry,...(daily?.candidates??[]),...(daily?.alternatives??[]),...(((daily as DailyRecommendation & { ranked_entries?: Candidate[] } | null)?.ranked_entries??[]))].filter(Boolean) as Candidate[];
+  const fallbackCandidates=[explanation?.primary,...(explanation?.alternatives??[]),daily?.primary,daily?.top_entry,...(daily?.candidates??[]),...(daily?.alternatives??[])].filter(Boolean) as Candidate[];
+  const candidates=((daily?.ranked_entries?.length?daily.ranked_entries:fallbackCandidates)??[]).filter(Boolean).sort((a,b)=>(numeric(b.win_probability)??-1)-(numeric(a.win_probability)??-1));
   const candidateFor=(entry:Entry)=>candidates.find((candidate)=>candidate.program_number===entry.program_number)||candidates.find((candidate)=>String(candidate.horse_name??'').trim().toUpperCase()===String(entry.horse_name??'').trim().toUpperCase())||null;
-  const lead=explanation?.primary??daily?.primary??daily?.top_entry??candidates[0]??null;
+  const lead=candidates[0]??explanation?.primary??daily?.primary??daily?.top_entry??null;
   const valueLead=value?.value_candidates?.[0]??null;
   const linkFor=(city:string,race?:number)=>`/bulletin?city=${encodeURIComponent(city)}${race?`&race=${race}`:''}`;
   return <main className="bulletin-shell">
