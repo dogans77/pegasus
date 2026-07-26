@@ -63,6 +63,9 @@ def plan_sequence(db: Session, race_id: int, risk: str = "balanced", max_columns
     safety = model_safety.report(db)
     if not safety.get("can_publish_actionable_scenarios", False):
         raise ValueError("Coverage plans are unavailable while model and official-result integrity checks remain under review.")
+    safety = model_safety.report(db)
+    if not safety.get("can_publish_actionable_scenarios", False):
+        raise ValueError("Coverage plans are unavailable while model and official-result integrity checks remain under review.")
     if risk not in {"conservative", "balanced", "aggressive"}:
         raise ValueError("risk must be conservative, balanced, or aggressive.")
     races = list(db.scalars(
