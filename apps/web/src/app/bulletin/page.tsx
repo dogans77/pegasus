@@ -38,7 +38,7 @@ export default async function Bulletin({searchParams}:{searchParams:Promise<{cit
     getJson<Explanation|null>('/explanations/races/'+selectedRace.id,null),
     getJson<Value|null>('/value/races/'+selectedRace.id,null),
     getJson<unknown>('/recommendations/daily?race_date='+today,[]),
-    getJson<Safety>('/analytics/model-safety?refresh=true',{can_publish_actionable_scenarios:false,state:'review',reasons:[]}),
+    getJson<Safety>('/analytics/model-safety',{can_publish_actionable_scenarios:false,state:'review',reasons:[]}),
   ]):[[],null,null,[],{can_publish_actionable_scenarios:false,state:'review',reasons:[]}];
   const entries=items<Entry>(rawEntries).sort((a,b)=>(a.program_number??999)-(b.program_number??999));
   const daily=items<DailyRecommendation>(rawDaily).find((item)=>Number(item.race_id)===selectedRace?.id)??null;

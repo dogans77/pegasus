@@ -24,7 +24,7 @@ const entryKey=(entry:Entry,index:number)=>`${entry.entry_id??entry.id??entry.pr
 export const dynamic='force-dynamic';
 export default async function Home(){
  const localToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul'}).format(new Date());
- const [board,health,safety]=await Promise.all([getJson<CurrentDayBoard>(`/analytics/current-day-board?race_date=${localToday}`,{race_date:null,ready:false,races:[],source_count:0,cities:[]}),getJson<Health>('/decision/model-health',{trained:false}),getJson<Safety>('/analytics/model-safety?refresh=true',{state:'review',can_publish_actionable_scenarios:false})]);
+ const [board,health,safety]=await Promise.all([getJson<CurrentDayBoard>(`/analytics/current-day-board?race_date=${localToday}`,{race_date:null,ready:false,races:[],source_count:0,cities:[]}),getJson<Health>('/decision/model-health',{trained:false}),getJson<Safety>('/analytics/model-safety',{state:'review',can_publish_actionable_scenarios:false})]);
  const activeDate=String(board.race_date??'');
  const races=(board.races??[]).sort((a,b)=>`${a.scheduled_time??''}-${a.track.city}`.localeCompare(`${b.scheduled_time??''}-${b.track.city}`));
  const currentProgramReady=Boolean(board.ready)&&activeDate===localToday&&races.length>0;

@@ -61,7 +61,7 @@ def report(db: Session, refresh: bool = False) -> dict:
     if unreconciled_official_results:
         reasons.append("Official result reconciliation is incomplete")
     state = "experimental" if not reasons else "review"
-    return {
+    payload = {
         "state": state,
         "can_publish_actionable_scenarios": False,
         "settled_races": settled,
@@ -75,3 +75,6 @@ def report(db: Session, refresh: bool = False) -> dict:
         "model_version": research.get("model_version"),
         "note": "The gate is intentionally conservative. It never asserts profitability or a guaranteed outcome.",
     }
+    _CACHE = payload
+    _CACHE_UNTIL = now + timedelta(minutes=10)
+    return payload
