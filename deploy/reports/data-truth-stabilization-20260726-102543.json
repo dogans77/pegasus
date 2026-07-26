@@ -1,0 +1,13 @@
+﻿{
+    "generated_at":  "2026-07-26T10:26:47.6982936+03:00",
+    "model_safety_state":  "review",
+    "publication_allowed":  false,
+    "model_hold_reasons":  [
+                               "Probability calibration gap exceeds the guardrail",
+                               "Official result reconciliation is incomplete"
+                           ],
+    "daily_program_ready":  true,
+    "daily_races":  17,
+    "daily_sources":  2,
+    "note":  "The package verifies data contracts and preserves the publication hold. It does not retrain or promote a model."
+}
