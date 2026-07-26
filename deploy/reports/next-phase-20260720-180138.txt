@@ -1,0 +1,20 @@
+﻿
+Check                Status
+-----                ------
+Ana dashboard        OK    
+Model ekrani         OK    
+Performans ekrani    OK    
+Model izleme ekrani  OK    
+Kapsam ekrani        OK    
+API health           OK    
+Model monitoring API OK    
+Veri hacmi           OK    
+
+
+
+NAME                         IMAGE                 COMMAND                  SERVICE    CREATED              STATUS              PORTS
+pegasus-staging-api-1        pegasus-staging-api   "/bin/sh -c 'alembicÔÇĞ"   api        About a minute ago   Up About a minute   8000/tcp
+pegasus-staging-postgres-1   postgres:16-alpine    "docker-entrypoint.sÔÇĞ"   postgres   16 hours ago         Up 16 hours         5432/tcp
+pegasus-staging-redis-1      redis:7-alpine        "docker-entrypoint.sÔÇĞ"   redis      16 hours ago         Up 16 hours         6379/tcp
+pegasus-staging-web-1        pegasus-staging-web   "docker-entrypoint.sÔÇĞ"   web        About a minute ago   Up About a minute   0.0.0.0:3100->3000/tcp, [::]:3100->3000/tcp
+

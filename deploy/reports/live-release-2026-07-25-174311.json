@@ -1,0 +1,73 @@
+﻿{
+    "race_date":  "2026-07-25",
+    "completed_at":  "2026-07-25T17:44:27.3037408+03:00",
+    "checks":  [
+                   {
+                       "check":  "API health",
+                       "status":  "OK",
+                       "detail":  "healthy"
+                   },
+                   {
+                       "check":  "Current-day races",
+                       "status":  "OK",
+                       "detail":  "20 races"
+                   },
+                   {
+                       "check":  "Daily source",
+                       "status":  "OK",
+                       "detail":  "20 races / 3 sources"
+                   },
+                   {
+                       "check":  "Daily release integrity",
+                       "status":  "OK",
+                       "detail":  "20 races validated"
+                   },
+                   {
+                       "check":  "Daily recommendations",
+                       "status":  "OK",
+                       "detail":  "20 race rankings"
+                   },
+                   {
+                       "check":  "Full-field probability contract",
+                       "status":  "OK",
+                       "detail":  "20 fields normalized"
+                   },
+                   {
+                       "check":  "Model safety",
+                       "status":  "OK",
+                       "detail":  "review / settled=4554"
+                   },
+                   {
+                       "check":  "Calibration holdout",
+                       "status":  "OK",
+                       "detail":  "eligible=False / holdout=850"
+                   },
+                   {
+                       "check":  "Outcome audit",
+                       "status":  "OK",
+                       "detail":  "audited=185 / informational"
+                   },
+                   {
+                       "check":  "Dashboard /",
+                       "status":  "OK",
+                       "detail":  "200"
+                   },
+                   {
+                       "check":  "Dashboard /bulletin",
+                       "status":  "OK",
+                       "detail":  "200"
+                   },
+                   {
+                       "check":  "Dashboard /quality-control",
+                       "status":  "OK",
+                       "detail":  "200"
+                   },
+                   {
+                       "check":  "Dashboard /daily-readiness",
+                       "status":  "OK",
+                       "detail":  "200"
+                   }
+               ],
+    "passed":  13,
+    "failed":  0
+}

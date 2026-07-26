@@ -1,0 +1,8 @@
+api-1  | INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+api-1  | INFO  [alembic.runtime.migration] Will assume transactional DDL.
+api-1  | INFO:     Started server process [14]
+api-1  | INFO:     Waiting for application startup.
+api-1  | INFO:     Application startup complete.
+api-1  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+api-1  | INFO:     127.0.0.1:36358 - "GET /health HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:41952 - "POST /api/v1/crawler/tjk/import-all-available?race_date=2026-07-20 HTTP/1.1" 404 Not Found

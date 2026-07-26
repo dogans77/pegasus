@@ -1,0 +1,9 @@
+{
+    "created_at":  "2026-07-26T09:49:42.4338043+03:00",
+    "safety_state":  "review",
+    "settled_races":  4551,
+    "unreconciled_official_results":  3,
+    "evaluated_races":  185,
+    "excluded_results":  4369,
+    "release_policy":  "Model remains review-only until independent safety criteria pass."
+}

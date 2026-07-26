@@ -1,0 +1,1 @@
+﻿{"date": "2026-07-20", "official_cities": ["Bursa", "Elazig"], "stored_cities": ["Bursa", "Elazig"], "match": true}

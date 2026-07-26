@@ -1,0 +1,104 @@
+api-1  | INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+api-1  | INFO  [alembic.runtime.migration] Will assume transactional DDL.
+api-1  | INFO:     Started server process [14]
+api-1  | INFO:     Waiting for application startup.
+api-1  | INFO:     Application startup complete.
+api-1  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+api-1  | INFO:     127.0.0.1:49618 - "GET /health HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51266 - "GET /api/v1/decision/model-health HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51250 - "GET /api/v1/races/ HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51266 - "GET /api/v1/races/2553/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51320 - "GET /api/v1/races/2559/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51302 - "GET /api/v1/races/2557/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51294 - "GET /api/v1/races/2556/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51272 - "GET /api/v1/races/2554/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51318 - "GET /api/v1/races/2558/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51326 - "GET /api/v1/races/2560/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51334 - "GET /api/v1/races/2561/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51362 - "GET /api/v1/races/2547/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51350 - "GET /api/v1/races/2562/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51354 - "GET /api/v1/races/2546/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51282 - "GET /api/v1/races/2555/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51366 - "GET /api/v1/races/2548/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51380 - "GET /api/v1/races/2549/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51402 - "GET /api/v1/races/2551/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51388 - "GET /api/v1/races/2550/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51406 - "GET /api/v1/races/2552/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51250 - "GET /api/v1/races/daily-intelligence?race_date=2026-07-19 HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51266 - "GET /api/v1/explanations/races/2546 HTTP/1.1" 404 Not Found
+api-1  | INFO:     127.0.0.1:49626 - "GET /api/v1/analytics/model-monitor?window=60 HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51266 - "GET /api/v1/decision/model-health HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51416 - "GET /api/v1/races/ HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51266 - "GET /api/v1/races/2553/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51482 - "GET /api/v1/races/2561/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51436 - "GET /api/v1/races/2556/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51422 - "GET /api/v1/races/2554/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51538 - "GET /api/v1/races/2549/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51552 - "GET /api/v1/races/2551/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51460 - "GET /api/v1/races/2558/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51430 - "GET /api/v1/races/2555/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51464 - "GET /api/v1/races/2559/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51506 - "GET /api/v1/races/2546/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51472 - "GET /api/v1/races/2560/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51562 - "GET /api/v1/races/2552/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51546 - "GET /api/v1/races/2550/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51518 - "GET /api/v1/races/2547/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51444 - "GET /api/v1/races/2557/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51490 - "GET /api/v1/races/2562/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51530 - "GET /api/v1/races/2548/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51416 - "GET /api/v1/races/daily-intelligence?race_date=2026-07-19 HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51266 - "GET /api/v1/explanations/races/2546 HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.5:51446 - "GET /api/v1/decision/model-health HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51446 - "GET /api/v1/results/performance HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51446 - "GET /api/v1/analytics/model-monitor?window=60 HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51446 - "GET /api/v1/races/ HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:51610 - "GET /api/v1/decision/sequence/2553?risk=balanced&max_columns=120&leg_count=6 HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:46372 - "GET /health HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:46388 - "GET /api/v1/analytics/model-monitor?window=60 HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60600 - "GET /api/v1/decision/model-health HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60588 - "GET /api/v1/races/ HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60600 - "GET /api/v1/races/2553/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60612 - "GET /api/v1/races/2554/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60626 - "GET /api/v1/races/2556/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60614 - "GET /api/v1/races/2555/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60654 - "GET /api/v1/races/2559/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60680 - "GET /api/v1/races/2562/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60694 - "GET /api/v1/races/2547/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60692 - "GET /api/v1/races/2546/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60642 - "GET /api/v1/races/2558/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60666 - "GET /api/v1/races/2561/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60664 - "GET /api/v1/races/2560/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60636 - "GET /api/v1/races/2557/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60698 - "GET /api/v1/races/2548/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60706 - "GET /api/v1/races/2549/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60712 - "GET /api/v1/races/2550/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60724 - "GET /api/v1/races/2551/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60726 - "GET /api/v1/races/2552/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60588 - "GET /api/v1/races/daily-intelligence?race_date=2026-07-19 HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:60600 - "GET /api/v1/explanations/races/2546 HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.5:41616 - "GET /api/v1/decision/model-health HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41602 - "GET /api/v1/races/ HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41616 - "GET /api/v1/races/2553/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41648 - "GET /api/v1/races/2556/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41620 - "GET /api/v1/races/2554/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41702 - "GET /api/v1/races/2561/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41660 - "GET /api/v1/races/2557/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41714 - "GET /api/v1/races/2546/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41632 - "GET /api/v1/races/2555/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41688 - "GET /api/v1/races/2560/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41680 - "GET /api/v1/races/2559/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41704 - "GET /api/v1/races/2562/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41668 - "GET /api/v1/races/2558/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41726 - "GET /api/v1/races/2547/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41728 - "GET /api/v1/races/2548/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41750 - "GET /api/v1/races/2550/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41738 - "GET /api/v1/races/2549/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41756 - "GET /api/v1/races/2551/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41762 - "GET /api/v1/races/2552/entries HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41602 - "GET /api/v1/races/daily-intelligence?race_date=2026-07-19 HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.5:41616 - "GET /api/v1/explanations/races/2546 HTTP/1.1" 404 Not Found
+api-1  | INFO:     127.0.0.1:48450 - "GET /health HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:47432 - "POST /api/v1/crawler/tjk/import-all-available?race_date=2026-07-20 HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:50638 - "GET /health HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:41450 - "GET /health HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:41452 - "POST /api/v1/crawler/tjk/import-all-available?race_date=2026-07-20 HTTP/1.1" 200 OK

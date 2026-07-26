@@ -1,0 +1,253 @@
+﻿
+Check                Status
+-----                ------
+Ana dashboard        OK    
+Model ekrani         OK    
+Performans ekrani    OK    
+Model izleme ekrani  FAIL  
+Kapsam ekrani        OK    
+API health           OK    
+Model monitoring API FAIL  
+Veri hacmi           OK    
+
+
+
+NAME                         IMAGE                 COMMAND                  SERVICE    CREATED          STATUS          PORTS
+pegasus-staging-api-1        pegasus-staging-api   "/bin/sh -c 'alembicÔÇĞ"   api        16 minutes ago   Up 16 minutes   8000/tcp
+pegasus-staging-postgres-1   postgres:16-alpine    "docker-entrypoint.sÔÇĞ"   postgres   16 minutes ago   Up 16 minutes   5432/tcp
+pegasus-staging-redis-1      redis:7-alpine        "docker-entrypoint.sÔÇĞ"   redis      16 minutes ago   Up 16 minutes   6379/tcp
+pegasus-staging-web-1        pegasus-staging-web   "docker-entrypoint.sÔÇĞ"   web        16 minutes ago   Up 16 minutes   0.0.0.0:3100->3000/tcp, [::]:3100->3000/tcp
+
+api-1       | INFO:     172.19.0.5:54888 - "GET /api/v1/races/2553/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54960 - "GET /api/v1/races/2561/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54908 - "GET /api/v1/races/2555/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54916 - "GET /api/v1/races/2556/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54956 - "GET /api/v1/races/2560/entries HTTP/1.1" 200 OK
+redis-1     | 1:C 19 Jul 2026 22:47:55.509 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+postgres-1  | The files belonging to this database system will be owned by user "postgres".
+redis-1     | 1:C 19 Jul 2026 22:47:55.509 * Redis version=7.4.9, bits=64, commit=00000000, modified=0, pid=1, just started
+postgres-1  | This user must also own the server process.
+api-1       | INFO:     172.19.0.5:54900 - "GET /api/v1/races/2554/entries HTTP/1.1" 200 OK
+redis-1     | 1:C 19 Jul 2026 22:47:55.509 * Configuration loaded
+api-1       | INFO:     172.19.0.5:54982 - "GET /api/v1/races/2547/entries HTTP/1.1" 200 OK
+postgres-1  | 
+postgres-1  | The database cluster will be initialized with locale "en_US.utf8".
+postgres-1  | The default database encoding has accordingly been set to "UTF8".
+api-1       | INFO:     172.19.0.5:54930 - "GET /api/v1/races/2557/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54962 - "GET /api/v1/races/2562/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54938 - "GET /api/v1/races/2558/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54948 - "GET /api/v1/races/2559/entries HTTP/1.1" 500 Internal Server Error
+api-1       | ERROR:    Exception in ASGI application
+postgres-1  | The default text search configuration will be set to "english".
+api-1       | Traceback (most recent call last):
+api-1       |   File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+api-1       |     result = await app(  # type: ignore[func-returns-value]
+redis-1     | 1:M 19 Jul 2026 22:47:55.510 * monotonic clock: POSIX clock_gettime
+redis-1     | 1:M 19 Jul 2026 22:47:55.512 * Running mode=standalone, port=6379.
+redis-1     | 1:M 19 Jul 2026 22:47:55.513 * Server initialized
+redis-1     | 1:M 19 Jul 2026 22:47:55.518 * Creating AOF base file appendonly.aof.1.base.rdb on server start
+redis-1     | 1:M 19 Jul 2026 22:47:55.531 * Creating AOF incr file appendonly.aof.1.incr.aof on server start
+web-1       | Ôû▓ Next.js 16.2.10
+web-1       | - Local:         http://localhost:3000
+postgres-1  | 
+api-1       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+postgres-1  | Data page checksums are disabled.
+postgres-1  | 
+postgres-1  | fixing permissions on existing directory /var/lib/postgresql/data ... ok
+postgres-1  | creating subdirectories ... ok
+postgres-1  | selecting dynamic shared memory implementation ... posix
+web-1       | - Network:       http://0.0.0.0:3000
+web-1       | Ô£ô Ready in 0ms
+api-1       |   File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+api-1       |     return await self.app(scope, receive, send)
+api-1       |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+api-1       |     await super().__call__(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+api-1       |     await self.middleware_stack(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+postgres-1  | selecting default max_connections ... 100
+api-1       |     raise exc
+postgres-1  | selecting default shared_buffers ... 128MB
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+api-1       |     await self.app(scope, receive, _send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 88, in __call__
+api-1       |     await self.app(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+postgres-1  | selecting default time zone ... UTC
+api-1       |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+api-1       |     raise exc
+postgres-1  | creating configuration files ... ok
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+api-1       |     await app(scope, receive, sender)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+redis-1     | 1:M 19 Jul 2026 22:47:55.531 * Ready to accept connections tcp
+api-1       |     await self.app(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+api-1       |     await self.middleware_stack(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+api-1       |     await route.handle(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1766, in handle
+api-1       |     await self.original_router.handle(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2740, in handle
+api-1       |     await included_router._handle_selected(scope, receive, send)
+postgres-1  | running bootstrap script ... ok
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1786, in _handle_selected
+api-1       |     await original_route.handle(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1265, in handle
+postgres-1  | sh: locale: not found
+api-1       |     await app(scope, receive, send)
+postgres-1  | 2026-07-19 22:47:56.648 UTC [42] WARNING:  no usable system locales were found
+postgres-1  | performing post-bootstrap initialization ... ok
+postgres-1  | syncing data to disk ... ok
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+api-1       |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+api-1       |     raise exc
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+api-1       |     await app(scope, receive, sender)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+postgres-1  | 
+postgres-1  | 
+api-1       |     response = await f(request)
+api-1       |                ^^^^^^^^^^^^^^^^
+postgres-1  | Success. You can now start the database server using:
+postgres-1  | 
+postgres-1  |     pg_ctl -D /var/lib/postgresql/data -l logfile start
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 712, in app
+api-1       |     content = await serialize_response(
+api-1       |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+postgres-1  | 
+postgres-1  | initdb: warning: enabling "trust" authentication for local connections
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 317, in serialize_response
+api-1       |     raise ResponseValidationError(
+api-1       | fastapi.exceptions.ResponseValidationError: 1 validation error:
+postgres-1  | initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+postgres-1  | waiting for server to start....2026-07-19 22:47:58.026 UTC [48] LOG:  starting PostgreSQL 16.14 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+postgres-1  | 2026-07-19 22:47:58.029 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+api-1       |   {'type': 'greater_than_equal', 'loc': ('response', 0, 'barrier'), 'msg': 'Input should be greater than or equal to 1', 'input': 0, 'ctx': {'ge': 1}}
+postgres-1  | 2026-07-19 22:47:58.039 UTC [51] LOG:  database system was shut down at 2026-07-19 22:47:57 UTC
+postgres-1  | 2026-07-19 22:47:58.049 UTC [48] LOG:  database system is ready to accept connections
+postgres-1  |  done
+postgres-1  | server started
+postgres-1  | CREATE DATABASE
+postgres-1  | 
+api-1       | 
+postgres-1  | 
+api-1       |   File "/app/app/api/v1/races.py", line 34, in get_race_entries
+api-1       |     GET /api/v1/races/{race_id}/entries
+api-1       | INFO:     172.19.0.5:55010 - "GET /api/v1/races/2549/entries HTTP/1.1" 200 OK
+postgres-1  | /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+postgres-1  | 
+postgres-1  | waiting for server to shut down....2026-07-19 22:47:58.241 UTC [48] LOG:  received fast shutdown request
+api-1       | INFO:     172.19.0.5:54978 - "GET /api/v1/races/2546/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55024 - "GET /api/v1/races/2550/entries HTTP/1.1" 200 OK
+postgres-1  | 2026-07-19 22:47:58.244 UTC [48] LOG:  aborting any active transactions
+api-1       | INFO:     172.19.0.5:55044 - "GET /api/v1/races/2552/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54994 - "GET /api/v1/races/2548/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55028 - "GET /api/v1/races/2551/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54890 - "GET /api/v1/races/daily-intelligence?race_date=2026-07-19 HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54888 - "GET /api/v1/explanations/races/2546 HTTP/1.1" 404 Not Found
+postgres-1  | 2026-07-19 22:47:58.249 UTC [48] LOG:  background worker "logical replication launcher" (PID 54) exited with exit code 1
+postgres-1  | 2026-07-19 22:47:58.250 UTC [49] LOG:  shutting down
+postgres-1  | 2026-07-19 22:47:58.253 UTC [49] LOG:  checkpoint starting: shutdown immediate
+postgres-1  | 2026-07-19 22:47:58.408 UTC [49] LOG:  checkpoint complete: wrote 926 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.055 s, sync=0.092 s, total=0.158 s; sync files=301, longest=0.004 s, average=0.001 s; distance=4283 kB, estimate=4283 kB; lsn=0/1925D58, redo lsn=0/1925D58
+postgres-1  | 2026-07-19 22:47:58.423 UTC [48] LOG:  database system is shut down
+postgres-1  |  done
+postgres-1  | server stopped
+postgres-1  | 
+postgres-1  | PostgreSQL init process complete; ready for start up.
+postgres-1  | 
+postgres-1  | 2026-07-19 22:47:58.473 UTC [1] LOG:  starting PostgreSQL 16.14 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+api-1       | INFO:     172.19.0.5:54888 - "GET /api/v1/decision/model-health HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55052 - "GET /api/v1/races/ HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54888 - "GET /api/v1/races/2553/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55074 - "GET /api/v1/races/2556/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55088 - "GET /api/v1/races/2558/entries HTTP/1.1" 200 OK
+postgres-1  | 2026-07-19 22:47:58.474 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+api-1       | INFO:     172.19.0.5:55180 - "GET /api/v1/races/2549/entries HTTP/1.1" 200 OK
+postgres-1  | 2026-07-19 22:47:58.474 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+api-1       | INFO:     172.19.0.5:55146 - "GET /api/v1/races/2548/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55138 - "GET /api/v1/races/2546/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55064 - "GET /api/v1/races/2555/entries HTTP/1.1" 200 OK
+postgres-1  | 2026-07-19 22:47:58.478 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+postgres-1  | 2026-07-19 22:47:58.484 UTC [70] LOG:  database system was shut down at 2026-07-19 22:47:58 UTC
+postgres-1  | 2026-07-19 22:47:58.493 UTC [1] LOG:  database system is ready to accept connections
+postgres-1  | 2026-07-19 22:52:58.707 UTC [68] LOG:  checkpoint starting: time
+postgres-1  | 2026-07-19 22:57:28.103 UTC [68] LOG:  checkpoint complete: wrote 8376 buffers (51.1%); 0 WAL file(s) added, 0 removed, 13 recycled; write=269.324 s, sync=0.034 s, total=269.397 s; sync files=144, longest=0.002 s, average=0.001 s; distance=205687 kB, estimate=205687 kB; lsn=0/E203BD0, redo lsn=0/E203B98
+api-1       | INFO:     172.19.0.5:55062 - "GET /api/v1/races/2554/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55176 - "GET /api/v1/races/2552/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55078 - "GET /api/v1/races/2557/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55142 - "GET /api/v1/races/2547/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55120 - "GET /api/v1/races/2561/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55154 - "GET /api/v1/races/2550/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55164 - "GET /api/v1/races/2551/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55112 - "GET /api/v1/races/2560/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55098 - "GET /api/v1/races/2559/entries HTTP/1.1" 500 Internal Server Error
+api-1       | ERROR:    Exception in ASGI application
+api-1       | Traceback (most recent call last):
+api-1       |   File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+api-1       |     result = await app(  # type: ignore[func-returns-value]
+api-1       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1       |   File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+api-1       |     return await self.app(scope, receive, send)
+api-1       |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+api-1       |     await super().__call__(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+api-1       |     await self.middleware_stack(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+api-1       |     raise exc
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+api-1       |     await self.app(scope, receive, _send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 88, in __call__
+api-1       |     await self.app(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+api-1       |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+api-1       |     raise exc
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+api-1       |     await app(scope, receive, sender)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+api-1       |     await self.app(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+api-1       |     await self.middleware_stack(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+api-1       |     await route.handle(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1766, in handle
+api-1       |     await self.original_router.handle(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2740, in handle
+api-1       |     await included_router._handle_selected(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1786, in _handle_selected
+api-1       |     await original_route.handle(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1265, in handle
+api-1       |     await app(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+api-1       |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+api-1       |     raise exc
+api-1       |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+api-1       |     await app(scope, receive, sender)
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+api-1       |     response = await f(request)
+api-1       |                ^^^^^^^^^^^^^^^^
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 712, in app
+api-1       |     content = await serialize_response(
+api-1       |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1       |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 317, in serialize_response
+api-1       |     raise ResponseValidationError(
+api-1       | fastapi.exceptions.ResponseValidationError: 1 validation error:
+api-1       |   {'type': 'greater_than_equal', 'loc': ('response', 0, 'barrier'), 'msg': 'Input should be greater than or equal to 1', 'input': 0, 'ctx': {'ge': 1}}
+api-1       | 
+api-1       |   File "/app/app/api/v1/races.py", line 34, in get_race_entries
+api-1       |     GET /api/v1/races/{race_id}/entries
+api-1       | INFO:     172.19.0.5:55128 - "GET /api/v1/races/2562/entries HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:55052 - "GET /api/v1/races/daily-intelligence?race_date=2026-07-19 HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:54888 - "GET /api/v1/explanations/races/2546 HTTP/1.1" 404 Not Found
+api-1       | INFO:     172.19.0.5:44184 - "GET /api/v1/decision/model-health HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:44184 - "GET /api/v1/results/performance HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:44184 - "GET /api/v1/races/ HTTP/1.1" 200 OK
+api-1       | INFO:     172.19.0.5:44194 - "GET /api/v1/decision/sequence/2553?risk=balanced&max_columns=120&leg_count=6 HTTP/1.1" 200 OK
+api-1       | INFO:     127.0.0.1:36140 - "GET /health HTTP/1.1" 200 OK
+api-1       | INFO:     127.0.0.1:36148 - "GET /api/v1/analytics/model-monitor?window=60 HTTP/1.1" 404 Not Found

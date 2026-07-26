@@ -1,0 +1,7 @@
+﻿
+NAME                         IMAGE                 COMMAND                  SERVICE    CREATED         STATUS         PORTS
+pegasus-staging-api-1        pegasus-staging-api   "/bin/sh -c 'alembicÔÇĞ"   api        6 minutes ago   Up 6 minutes   8000/tcp
+pegasus-staging-postgres-1   postgres:16-alpine    "docker-entrypoint.sÔÇĞ"   postgres   6 minutes ago   Up 6 minutes   5432/tcp
+pegasus-staging-redis-1      redis:7-alpine        "docker-entrypoint.sÔÇĞ"   redis      6 minutes ago   Up 6 minutes   6379/tcp
+pegasus-staging-web-1        pegasus-staging-web   "docker-entrypoint.sÔÇĞ"   web        6 minutes ago   Up 6 minutes   0.0.0.0:3100->3000/tcp, [::]:3100->3000/tcp
+

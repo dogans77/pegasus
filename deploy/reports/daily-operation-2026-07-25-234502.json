@@ -1,0 +1,13 @@
+﻿{
+    "race_date":  "2026-07-25",
+    "program":  "ok (20 races)",
+    "entries":  "ok (196 entries)",
+    "pre_result_snapshots":  "ok (20 races)",
+    "results":  "ok (0 results)",
+    "daily_release":  "ready",
+    "completed_at":  "2026-07-25T23:45:35.9599353+03:00",
+    "cache_warm":  "ok (20 races)",
+    "release_blockers":  [
+
+                         ]
+}
