@@ -249,12 +249,16 @@ RESULT_CITIES = [
     ("Elazig", "Elaz\u0131\u011f", 11),
 ]
 def _result_horse_key(value: str | None) -> str:
-    # TJK prints the program number beside the horse name. It is not part
-    # of the horse identity used by the imported race card.
-    raw = re.sub(r"\s*\(\d{1,2}\)\s*$", "", value or "")
+    # Official result cells contain: HORSE NAME(7) followed by equipment notes.
+    # Keep only the horse name and repair a possible UTF-8/Latin-1 decode error
+    # before comparing it with the normalized race card name.
+    raw = re.sub(r"\s*\(\d{1,2}\).*", "", value or "").strip()
+    try:
+        raw = raw.encode("latin1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        pass
     text = raw.upper().translate(str.maketrans({"I": "I", "\u0130": "I", "\u0131": "I", "\u015e": "S", "\u011e": "G", "\u00dc": "U", "\u00d6": "O", "\u00c7": "C"}))
     return re.sub(r"[^A-Z0-9]", "", text)
-
 def _result_candidates(race_date: date):
     client = TjkResultsClient()
     output = []
