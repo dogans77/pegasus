@@ -18,7 +18,7 @@ def _selection_count(chaos_index: float, risk: str) -> int:
         count += 1
     elif risk == "aggressive":
         count -= 1
-    return max(1, min(4, count))
+    return max(1, min(6, count))
 
 
 def _confidence_label(chaos_index: float, count: int) -> str:
@@ -33,7 +33,7 @@ def _leg(db: Session, race: Race, risk: str) -> dict:
     recommendation = recommendation_for_race(db, race.id)
     value = analyze_value(db, race.id)
     desired = _selection_count(float(recommendation["chaos_index"]), risk)
-    ordered = [recommendation["primary"], *recommendation["alternatives"]]
+    ordered = recommendation.get("ranked_entries") or [recommendation["primary"], *recommendation["alternatives"]]
     by_program = {item["program_number"]: item for item in ordered}
     for item in value["value_candidates"]:
         by_program.setdefault(item["program_number"], {

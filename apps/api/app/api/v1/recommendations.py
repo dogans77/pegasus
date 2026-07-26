@@ -41,9 +41,6 @@ def explanation(top: RankedEntry, entries: list[RankedEntry], chaos_index: float
 
 
 def recommendation_for_race(db: Session, race_id: int) -> dict:
-    cached = _PEGASUS_RECOMMENDATION_CACHE.get(race_id)
-    if cached is not None:
-        return cached
     chaos_index, entries = analyze_race(db, race_id)
     # PEGASUS_RANKING_INTEGRITY: recommendation order must always follow probability.
     entries = sorted(entries, key=lambda item: float(item.win_probability or 0), reverse=True)
@@ -71,7 +68,6 @@ def recommendation_for_race(db: Session, race_id: int) -> dict:
         "reasons": explanation(top, entries, chaos_index),
         "disclaimer": "Olasilik tabanli karar destegidir; kesin sonuc iddiasi tasimaz.",
     }
-    _PEGASUS_RECOMMENDATION_CACHE[race_id] = result
     return result
 
 
