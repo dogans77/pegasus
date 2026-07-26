@@ -2,7 +2,7 @@ type Race={id:number;race_number:number;race_date:string;scheduled_time:string|n
 type Entry={id?:number;entry_id?:number;program_number:number;horse_name:string|null;handicap_rating:number|null;agf_percent:number|null;weight_kg:number|null;win_probability?:number};
 type Daily={race_id:number;city:string;race_number:number;scheduled_time:string|null;chaos_index:number;top_entry:Entry};
 type Health={trained:boolean;deployed_model?:string;candidate_top1_accuracy?:number|null;handicap_benchmark_top1_accuracy?:number|null;decision?:string};
-type Safety={state?:string;can_publish_actionable_scenarios?:boolean;reasons?:string[]};
+type Safety={state?:string;can_publish_actionable_scenarios?:boolean;reasons?:string[];reason?:string;verified_race_dates?:number;minimum_race_dates?:number};
 type Explanation={candidates:{program_number:number;strengths:{label:string;detail:string}[]}[]};
 type SourceStatus={ready:boolean;race_date:string|null;cities:{name:string;race_count:number}[];race_count:number;source_count:number;last_received_at:string|null};
 type CurrentDayBoard={race_date?:string|null;ready?:boolean;source_count?:number;last_received_at?:string|null;cities?:string[];race_count?:number;races?:Race[]};
@@ -28,7 +28,8 @@ export default async function Home(){
  const activeDate=String(board.race_date??'');
  const races=(board.races??[]).sort((a,b)=>`${a.scheduled_time??''}-${a.track.city}`.localeCompare(`${b.scheduled_time??''}-${b.track.city}`));
  const currentProgramReady=Boolean(board.ready)&&activeDate===localToday&&races.length>0;
- const safetyMessage=safety.state==='blocked'?'Do\u011frulanm\u0131\u015f sonu\u00e7 seti haz\u0131rlan\u0131yor':safety.state==='review'?'Kalibrasyon incelemesi s\u00fcr\u00fcyor':safety.can_publish_actionable_scenarios?'Model kontrol\u00fc tamamland\u0131':'Veri durumu bekleniyor';
+ const verifiedDays=Number(safety.verified_race_dates??0); const minimumDays=Number(safety.minimum_race_dates??20);
+ const safetyMessage=safety.state==='blocked'?`Do\u011frulanm\u0131\u015f sonu\u00e7: ${verifiedDays}/${minimumDays} g\u00fcn`:safety.state==='review'?'Kalibrasyon incelemesi s\u00fcr\u00fcyor':safety.can_publish_actionable_scenarios?'Model kontrol\u00fc tamamland\u0131':'Veri durumu bekleniyor';
  const safetyDetail=String((safety.reasons??[])[0]??(safety as {reason?:string}).reason??'');
  const sourceStatus:SourceStatus={ready:Boolean(board.ready),race_date:board.race_date??null,cities:(board.cities??[]).map(name=>({name,race_count:0})),race_count:Number(board.race_count??races.length),source_count:Number(board.source_count??0),last_received_at:board.last_received_at??null}; const cards=await Promise.all(races.map(async race=>({...race,entries:await getJson<Entry[]>(`/races/${race.id}/entries`,[])})));
  const daily=activeDate?await getJson<Daily[]>(`/races/daily-intelligence?race_date=${activeDate}`,[]):[];

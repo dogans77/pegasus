@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.race import Race
 from app.models.race_result import RaceResult
 
 from app.services import model_research
@@ -34,12 +35,22 @@ def report(db: Session, refresh: bool = False) -> dict:
     try:
         research = model_research.temporal_research(db)
     except ValueError as exc:
-        return {
+        verified_dates = db.scalar(
+            select(func.count(func.distinct(Race.race_date)))
+            .join(RaceResult, RaceResult.race_id == Race.id)
+            .where(RaceResult.source == "tjk_name_verified")
+        ) or 0
+        payload = {
             "state": "blocked",
             "can_publish_actionable_scenarios": False,
             "reason": str(exc),
+            "verified_race_dates": int(verified_dates),
+            "minimum_race_dates": 20,
             "minimum_settled_races": MIN_SETTLED_RACES,
         }
+        _CACHE = payload
+        _CACHE_UNTIL = now + timedelta(minutes=10)
+        return payload
 
     settled = int(research.get("settled_races", 0))
     model_top1 = research.get("average_model_top1_accuracy")
