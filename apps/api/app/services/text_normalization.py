@@ -2,20 +2,25 @@ MOJIBAKE_MARKERS = ("\u00c3", "\u00c2", "\u00c4", "\u00c5", "\u00e2", "\ufffd")
 
 
 def repair_text(value: str | None) -> str:
-    """Repair common UTF-8-as-Latin-1 text only when it improves the value."""
+    """Repair repeated UTF-8-as-single-byte corruption without fabricating text."""
     text = " ".join(str(value or "").split())
-    for _ in range(2):
+    for _ in range(3):
         if not any(marker in text for marker in MOJIBAKE_MARKERS):
             break
-        try:
-            candidate = text.encode("latin-1").decode("utf-8")
-        except UnicodeError:
-            break
         before = sum(text.count(marker) for marker in MOJIBAKE_MARKERS)
-        after = sum(candidate.count(marker) for marker in MOJIBAKE_MARKERS)
-        if after >= before:
+        best = text
+        for encoding in ("latin-1", "cp1252"):
+            try:
+                candidate = text.encode(encoding).decode("utf-8")
+            except UnicodeError:
+                continue
+            after = sum(candidate.count(marker) for marker in MOJIBAKE_MARKERS)
+            if after < before:
+                best = candidate
+                break
+        if best == text:
             break
-        text = candidate
+        text = best
     return text
 
 
