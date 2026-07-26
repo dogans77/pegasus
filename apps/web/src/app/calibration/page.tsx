@@ -11,21 +11,21 @@ type Report = {
 };
 
 const tx = {
-  back: "\u2190 Programa d\u00f6n",
-  eyebrow: "MODEL ARA\u015eTIRMA",
-  title: "Kalibrasyon kontrol\u00fc",
-  intro: "Olas\u0131l\u0131k modelini yay\u0131na almak i\u00e7in ayr\u0131lm\u0131\u015f zaman penceresinde yap\u0131lan ba\u011f\u0131ms\u0131z test.",
-  unavailable: "Kalibrasyon raporu hen\u00fcz haz\u0131r de\u011fil.",
+  back: "← Programa dön",
+  eyebrow: "MODEL ARAŞTIRMA",
+  title: "Kalibrasyon kontrolü",
+  intro: "Olasılık modelini yayına almak için ayrılmış zaman penceresinde yapılan bağımsız test.",
+  unavailable: "Kalibrasyon raporu henüz hazır değil.",
   raw: "Mevcut model",
-  candidate: "Kalibrasyon aday\u0131",
+  candidate: "Kalibrasyon adayı",
   brier: "Brier skoru",
   top1: "Birinci aday isabeti",
-  tune: "Ayar yar\u0131\u015flar\u0131",
-  holdout: "G\u00f6r\u00fclmemi\u015f test yar\u0131\u015flar\u0131",
-  shrinkage: "Se\u00e7ilen yumu\u015fatma",
-  approved: "Manuel inceleme i\u00e7in uygun",
-  blocked: "Yay\u0131na alma e\u015fi\u011fini ge\u00e7medi",
-  warning: "Bu ekran model de\u011fi\u015ftirmez. Sonu\u00e7, bahis veya getiri vaadi de\u011fildir.",
+  tune: "Ayar yarışları",
+  holdout: "Görülmemiş test yarışları",
+  shrinkage: "Seçilen yumuşatma",
+  approved: "Manuel inceleme için uygun",
+  blocked: "Yayına alma eşiğini geçmedi",
+  warning: "Bu ekran model değiştirmez. Sonuç, bahis veya getiri vaadi değildir.",
 };
 
 async function getReport(): Promise<Report | null> {
