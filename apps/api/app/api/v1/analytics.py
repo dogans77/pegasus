@@ -119,7 +119,23 @@ def current_day_board(race_date: date | None = None, db: Session = Depends(get_d
         "last_received_at": last_received_at,
         "cities": cities,
         "race_count": len(races),
-        "races": races,
+        "races": [
+            {
+                "id": race.id,
+                "race_number": race.race_number,
+                "race_date": race.race_date,
+                "scheduled_time": race.scheduled_time,
+                "distance_meters": race.distance_meters,
+                "surface": race.surface,
+                "race_class": race.race_class,
+                "track": {
+                    "id": race.track.id if race.track else None,
+                    "name": race.track.name if race.track else None,
+                    "city": race.track.city if race.track else None,
+                },
+            }
+            for race in races
+        ],
         "note": "Current-day board returns only official races for the requested date; it never silently falls back to an older program.",
     }
 
