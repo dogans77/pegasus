@@ -164,6 +164,7 @@ def _add_field_relative_features(rows: list[dict]) -> list[dict]:
     return rows
 
 def _settled_groups(db: Session, before_date=None) -> list[tuple[Race, RaceResult, list[RaceEntry]]]:
+    """Return only results that can be independently matched to their race card."""
     statement = (
         select(Race, RaceResult, RaceEntry)
         .join(RaceResult, RaceResult.race_id == Race.id)
@@ -178,7 +179,21 @@ def _settled_groups(db: Session, before_date=None) -> list[tuple[Race, RaceResul
         if race.id not in grouped:
             grouped[race.id] = (race, result, [])
         grouped[race.id][2].append(entry)
-    return list(grouped.values())
+    verified: list[tuple[Race, RaceResult, list[RaceEntry]]] = []
+    for race, result, entries in grouped.values():
+        try:
+            order = [int(value) for value in (result.official_order or [])]
+        except (TypeError, ValueError):
+            continue
+        programs = {int(entry.program_number): entry for entry in entries}
+        if len(order) < 2 or len(order) != len(set(order)):
+            continue
+        if any(program not in programs for program in order):
+            continue
+        if result.winner_entry_id != programs[order[0]].id:
+            continue
+        verified.append((race, result, entries))
+    return verified
 
 
 def _record_outcome(state: dict, race: Race, won: bool, finish_position: int | None = None, record_finish: bool = False) -> None:
