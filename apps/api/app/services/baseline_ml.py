@@ -212,19 +212,33 @@ def _apply_race_to_history(race: Race, result: RaceResult, entries: list[RaceEnt
 
 
 def training_frame(db: Session) -> pd.DataFrame:
+    """Build daily pre-race features without using any result from that same day."""
     horses, jockeys, trainers, pairs = (defaultdict(_empty_state) for _ in range(4))
     records = []
-    for race, result, entries in _settled_groups(db):
-        if result.winner_entry_id is None or len(entries) < 2:
-            continue
-        race_rows = []
-        for entry in entries:
-            pair_key = (entry.jockey_id, entry.trainer_id)
-            record = _entry_row(entry, race, len(entries), horses[entry.horse_id], jockeys[entry.jockey_id], trainers[entry.trainer_id], pairs[pair_key])
-            record["winner"] = int(entry.id == result.winner_entry_id)
-            race_rows.append(record)
-        records.extend(_add_field_relative_features(race_rows))
-        _apply_race_to_history(race, result, entries, horses, jockeys, trainers, pairs)
+    groups = _settled_groups(db)
+    by_date = defaultdict(list)
+    for group in groups:
+        by_date[group[0].race_date].append(group)
+    for race_date in sorted(by_date):
+        day_groups = by_date[race_date]
+        day_records = []
+        for race, result, entries in day_groups:
+            if result.winner_entry_id is None or len(entries) < 2:
+                continue
+            race_rows = []
+            for entry in entries:
+                pair_key = (entry.jockey_id, entry.trainer_id)
+                record = _entry_row(
+                    entry, race, len(entries), horses[entry.horse_id],
+                    jockeys[entry.jockey_id], trainers[entry.trainer_id], pairs[pair_key],
+                )
+                record["winner"] = int(entry.id == result.winner_entry_id)
+                race_rows.append(record)
+            day_records.extend(_add_field_relative_features(race_rows))
+        records.extend(day_records)
+        for race, result, entries in day_groups:
+            if result.winner_entry_id is not None and len(entries) >= 2:
+                _apply_race_to_history(race, result, entries, horses, jockeys, trainers, pairs)
     return pd.DataFrame(records)
 
 
