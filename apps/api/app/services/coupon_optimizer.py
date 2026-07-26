@@ -12,13 +12,40 @@ from app.api.v1.recommendations import recommendation_for_race
 from app.services.value_engine import analyze_value
 
 
-def _selection_count(chaos_index: float, risk: str) -> int:
-    count = 1 if chaos_index < 35 else 2 if chaos_index < 60 else 3 if chaos_index < 80 else 4
+def _probability_fraction(value: object) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return number / 100.0 if number > 1.0 else number
+
+
+def _selection_count(ordered: list[dict], chaos_index: float, risk: str) -> int:
+    """Choose coverage from the field shape, not a fixed number per leg."""
+    probabilities = [_probability_fraction(item.get("win_probability")) for item in ordered]
+    if not probabilities:
+        return 1
+    top = probabilities[0]
+    second = probabilities[1] if len(probabilities) > 1 else 0.0
+    margin = top - second
+    # A clear leader in a calm race can be narrow.  Flat probability curves
+    # or high chaos require wider coverage.  This remains only a draft while
+    # the publication safety gate is closed.
+    if chaos_index < 35 and margin >= 0.10:
+        count = 1
+    elif chaos_index < 52 and margin >= 0.055:
+        count = 2
+    elif chaos_index < 70:
+        count = 3
+    elif chaos_index < 84:
+        count = 4
+    else:
+        count = 5
     if risk == "conservative":
         count += 1
     elif risk == "aggressive":
         count -= 1
-    return max(1, min(6, count))
+    return max(1, min(len(ordered), 6, count))
 
 
 def _confidence_label(chaos_index: float, count: int) -> str:
@@ -32,8 +59,8 @@ def _confidence_label(chaos_index: float, count: int) -> str:
 def _leg(db: Session, race: Race, risk: str) -> dict:
     recommendation = recommendation_for_race(db, race.id)
     value = analyze_value(db, race.id)
-    desired = _selection_count(float(recommendation["chaos_index"]), risk)
     ordered = recommendation.get("ranked_entries") or [recommendation["primary"], *recommendation["alternatives"]]
+    desired = _selection_count(ordered, float(recommendation["chaos_index"]), risk)
     by_program = {item["program_number"]: item for item in ordered}
     for item in value["value_candidates"]:
         by_program.setdefault(item["program_number"], {
@@ -50,6 +77,7 @@ def _leg(db: Session, race: Race, risk: str) -> dict:
         "chaos_index": recommendation["chaos_index"],
         "confidence": _confidence_label(recommendation["chaos_index"], len(selections)),
         "selection_count": len(selections),
+        "selection_basis": "field_shape_and_chaos",
         "selections": selections,
         "value_candidate": value["value_candidates"][0] if value["value_candidates"] else None,
         "false_favorite": value["false_favorite"],
