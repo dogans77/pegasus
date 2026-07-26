@@ -249,7 +249,10 @@ RESULT_CITIES = [
     ("Elazig", "Elaz\u0131\u011f", 11),
 ]
 def _result_horse_key(value: str | None) -> str:
-    text = (value or "").upper().translate(str.maketrans({"I": "I", "\u0130": "I", "\u0131": "I", "\u015e": "S", "\u011e": "G", "\u00dc": "U", "\u00d6": "O", "\u00c7": "C"}))
+    # TJK prints the program number beside the horse name. It is not part
+    # of the horse identity used by the imported race card.
+    raw = re.sub(r"\s*\(\d{1,2}\)\s*$", "", value or "")
+    text = raw.upper().translate(str.maketrans({"I": "I", "\u0130": "I", "\u0131": "I", "\u015e": "S", "\u011e": "G", "\u00dc": "U", "\u00d6": "O", "\u00c7": "C"}))
     return re.sub(r"[^A-Z0-9]", "", text)
 
 def _result_candidates(race_date: date):
@@ -316,16 +319,21 @@ def import_results(race_date: date, db: Session = Depends(get_db)):
             entries = list(db.scalars(select(RaceEntry).options(selectinload(RaceEntry.horse)).where(RaceEntry.race_id == race.id)))
             by_program = {entry.program_number: entry for entry in entries}
             by_horse = {_result_horse_key(entry.horse.name): entry for entry in entries if entry.horse is not None}
-            known_order = [number for number in parsed.finisher_program_numbers if number in by_program]
+            # Result tables may show finishing position in a numeric-looking
+            # column. Horse-name matching is therefore the only trusted primary key.
+            known_order = []
+            for finisher_name in parsed.finisher_names:
+                entry = by_horse.get(_result_horse_key(finisher_name))
+                if entry is not None and entry.program_number not in known_order:
+                    known_order.append(entry.program_number)
+            result_source = "tjk_name_verified"
             if len(known_order) < 2:
-                known_order = []
-                for finisher_name in parsed.finisher_names:
-                    entry = by_horse.get(_result_horse_key(finisher_name))
-                    if entry is not None and entry.program_number not in known_order:
-                        known_order.append(entry.program_number)
-            if not known_order:
-                skipped += 1
-                continue
+                fallback_order = [number for number in parsed.finisher_program_numbers if number in by_program]
+                if len(fallback_order) < 2:
+                    skipped += 1
+                    continue
+                known_order = fallback_order
+                result_source = "tjk_program_fallback"
             result = db.scalar(select(RaceResult).where(RaceResult.race_id == race.id))
             if result is None:
                 db.add(RaceResult(
@@ -333,14 +341,14 @@ def import_results(race_date: date, db: Session = Depends(get_db)):
                     winner_entry_id=by_program[known_order[0]].id,
                     official_order=known_order,
                     official_time=parsed.official_time,
-                    source="tjk",
+                    source=result_source,
                 ))
                 created += 1
             else:
                 result.winner_entry_id = by_program[known_order[0]].id
                 result.official_order = known_order
                 result.official_time = parsed.official_time
-                result.source = "tjk"
+                result.source = result_source
                 updated += 1
     db.commit()
     return {"pages_found": len(found), "results_created": created, "results_updated": updated, "results_skipped": skipped}
