@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.models.race import Race
-from app.services import baseline_ml
+from app.services import baseline_ml, model_safety
 from app.services.race_intelligence import RankedEntry, analyze_race
 
 router = APIRouter(prefix="/recommendations", tags=["Explainable Recommendations"])
@@ -123,6 +123,15 @@ def get_shortlist(
     db: Session = Depends(get_db),
 ) -> dict:
     limit = max(1, min(limit, 40))
+    safety = model_safety.report(db)
+    if not safety.get("can_publish_actionable_scenarios", False):
+        return {
+            "race_date": race_date,
+            "max_chaos": max_chaos,
+            "items": [],
+            "publication_state": safety.get("state", "review"),
+            "disclaimer": "Shortlist publication is paused while model and official-result integrity checks remain under review.",
+        }
     races = list(
         db.scalars(
             select(Race)

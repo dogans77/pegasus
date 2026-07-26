@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.race import Race
 from app.models.track import Track
-from app.services import baseline_ml
+from app.services import baseline_ml, model_safety
 from app.api.v1.recommendations import recommendation_for_race
 from app.services.value_engine import analyze_value
 
@@ -60,6 +60,9 @@ def plan_sequence(db: Session, race_id: int, risk: str = "balanced", max_columns
     start = db.get(Race, race_id)
     if start is None:
         raise LookupError("Race not found.")
+    safety = model_safety.report(db)
+    if not safety.get("can_publish_actionable_scenarios", False):
+        raise ValueError("Coverage plans are unavailable while model and official-result integrity checks remain under review.")
     if risk not in {"conservative", "balanced", "aggressive"}:
         raise ValueError("risk must be conservative, balanced, or aggressive.")
     races = list(db.scalars(
